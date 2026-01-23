@@ -1,17 +1,23 @@
 import SwiftUI
 
 struct DetailedLogView: View {
+    let targetEntryID: UUID? // Optional ID to auto-open
+    
     @State private var entries: [VideoEntry] = []
     @State private var offset: Int = 0
     private let limit: Int = 20
     
     @State private var selectedLog: String? = nil
+    @State private var selectedTitle: String = ""
     @State private var showingLogViewer = false
+    
+    init(targetEntryID: UUID? = nil) {
+        self.targetEntryID = targetEntryID
+    }
     
     var body: some View {
         ZStack {
-            Color(uiColor: .systemGroupedBackground)
-                .ignoresSafeArea()
+            Color.black.ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // Table Header
@@ -27,30 +33,33 @@ struct DetailedLogView: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
                 .padding(.vertical, 8)
-                .background(Color.primary.opacity(0.05))
+                .background(Color.white.opacity(0.05))
                 
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(entries) { entry in
                             VStack(spacing: 0) {
                                 Button(action: {
-                                    selectedLog = DatabaseManager.shared.fetchRawLog(for: entry.id)
-                                    showingLogViewer = true
+                                    openLog(for: entry)
                                 }) {
                                     HStack(alignment: .top) {
                                         Text(formatDate(entry.date))
-                                            .font(.system(.caption2, design: .monospaced))
+                                            .font(.nothingMeta)
+                                            .foregroundStyle(.secondary)
                                             .frame(width: 80, alignment: .leading)
                                         
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(entry.id.uuidString.prefix(8) + "...")
-                                                .font(.system(.caption2, design: .monospaced))
-                                                .foregroundStyle(.secondary)
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(entry.id.uuidString.prefix(8).uppercased())
+                                                .font(.system(size: 9, design: .monospaced))
+                                                .foregroundStyle(DesignSystem.Colors.nothingRed)
+                                            
                                             Text(entry.title)
                                                 .font(.nothingBody)
                                                 .lineLimit(1)
+                                                .foregroundStyle(.primary)
+                                            
                                             Text(entry.url)
-                                                .font(.system(size: 8))
+                                                .font(.system(size: 8, design: .monospaced))
                                                 .foregroundStyle(.secondary)
                                                 .lineLimit(1)
                                         }
@@ -68,26 +77,29 @@ struct DetailedLogView: View {
                                 .buttonStyle(.plain)
                                 
                                 Divider()
-                                    .opacity(0.1)
+                                    .background(Color.white.opacity(0.1))
                             }
                         }
                         
                         if entries.count >= limit && entries.count % limit == 0 {
                             Button(action: loadMore) {
-                                Text("LOAD MORE (OFFSET: \(offset))")
+                                Text("LOAD MORE RECORDS")
                                     .font(.nothingMeta)
                                     .padding()
                                     .frame(maxWidth: .infinity)
                                     .background(DesignSystem.Colors.nothingRed.opacity(0.1))
-                                    .cornerRadius(8)
+                                    .cornerRadius(12)
                             }
                             .padding()
                         }
+                        
+                        // Bottom spacer for floating tab bar
+                        Color.clear.frame(height: 100)
                     }
                 }
             }
         }
-        .navigationTitle("RAW LOGS")
+        .navigationTitle("SEQUENCE LOGS")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingLogViewer) {
             logViewerSheet
@@ -96,23 +108,47 @@ struct DetailedLogView: View {
             if entries.isEmpty {
                 loadEntries()
             }
+            
+            // Auto open if ID provided
+            if let targetID = targetEntryID {
+                if let entry = DatabaseManager.shared.fetchEntries(limit: 100, offset: 0).first(where: { $0.id == targetID }) {
+                    openLog(for: entry)
+                }
+            }
         }
+    }
+    
+    private func openLog(for entry: VideoEntry) {
+        selectedTitle = entry.title
+        selectedLog = DatabaseManager.shared.fetchRawLog(for: entry.id)
+        showingLogViewer = true
     }
     
     private var logViewerSheet: some View {
         NavigationView {
             ScrollView {
-                Text(selectedLog ?? "No log detail found.")
-                    .font(.system(.caption2, design: .monospaced))
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(selectedTitle)
+                        .font(.nothingHeader)
+                        .padding(.top)
+                    
+                    Divider().background(Color.white.opacity(0.2))
+                    
+                    Text(selectedLog ?? "Log details are unavailable for this entry.")
+                        .font(.system(size: 11, design: .monospaced))
+                        .padding(.bottom, 40)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(.horizontal)
             }
-            .navigationTitle("RAW LOG OUTPUT")
+            .background(Color.black.ignoresSafeArea())
+            .navigationTitle("RAW OUTPUT")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("CLOSE") { showingLogViewer = false }
+                    Button("DISMISS") { showingLogViewer = false }
                         .font(.nothingMeta)
+                        .foregroundColor(DesignSystem.Colors.nothingRed)
                 }
             }
         }

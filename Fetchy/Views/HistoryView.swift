@@ -13,11 +13,10 @@ struct HistoryView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(uiColor: .systemGroupedBackground)
-                    .ignoresSafeArea()
+                Color.black.ignoresSafeArea() // Deep black background for Nothing OS feel
                 
                 ScrollView {
-                    VStack(spacing: 0) {
+                    VStack(spacing: 12) {
                         if entries.isEmpty {
                             VStack(spacing: 20) {
                                 Image(systemName: "tray")
@@ -27,17 +26,19 @@ struct HistoryView: View {
                             }
                             .padding(.top, 100)
                         } else {
-                            VStack(spacing: 0) {
+                            // Header Meta
+                            HStack {
+                                DotMatrixText(text: "\(entries.count) ITEMS STORED")
+                                Spacer()
+                            }
+                            .padding(.horizontal)
+                            .padding(.top, 8)
+
+                            LazyVStack(spacing: 12) {
                                 ForEach(entries) { entry in
                                     HistoryRow(entry: entry, onDelete: {
                                         deleteEntry(entry)
                                     })
-                                    
-                                    if entry.id != entries.last?.id {
-                                        Divider()
-                                            .padding(.leading, 60)
-                                            .opacity(0.3)
-                                    }
                                 }
                                 
                                 // Pagination
@@ -48,19 +49,20 @@ struct HistoryView: View {
                                             .padding()
                                             .frame(maxWidth: .infinity)
                                             .background(DesignSystem.Colors.nothingRed.opacity(0.1))
-                                            .cornerRadius(8)
+                                            .cornerRadius(12)
                                     }
-                                    .padding()
                                 }
                             }
-                            .cornerRadius(8)
-                            .liquidGlass()
-                            .padding()
+                            .padding(.horizontal)
+                            .padding(.bottom, 100) // Space for floating bar
                         }
                     }
                 }
             }
             .navigationTitle("History")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(Color.black, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingDeletePicker = true }) {
@@ -189,16 +191,15 @@ struct HistoryRow: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 16) {
-                ServiceIcon(entry.service)
-                    .frame(width: 32, height: 32)
+                ServiceIcon(entry.service, size: 36)
                 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(entry.title)
                         .font(.nothingBody)
                         .lineLimit(1)
                     
                     Text(entry.url)
-                        .font(.caption)
+                        .font(.nothingMeta)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -207,53 +208,56 @@ struct HistoryRow: View {
                 
                 StatusIndicator(status: entry.status)
             }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
+            .padding(16)
             .contentShape(Rectangle())
             .onTapGesture {
-                withAnimation(.spring()) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                     isExpanded.toggle()
                     if isExpanded && rawLog == nil {
                         rawLog = DatabaseManager.shared.fetchRawLog(for: entry.id)
                     }
                 }
             }
-            .swipeActions(edge: .trailing) {
-                Button(role: .destructive, action: onDelete) {
-                    Label("Delete", systemImage: "trash")
-                }
-            }
             
             if isExpanded {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 12) {
                     Divider().opacity(0.1)
-                    Text("LOG SNIPPET")
-                        .font(.nothingMeta)
-                        .foregroundStyle(.secondary)
                     
-                    Text(rawLog ?? "No log data available.")
-                        .font(.system(.caption2, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(5)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 6) {
+                        DotMatrixText(text: "ACTIVITY LOG")
+                        
+                        Text(rawLog ?? "No log items recorded.")
+                            .font(.system(size: 10, weight: .regular, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(6)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                     
-                    NavigationLink(destination: DetailedLogView()) {
+                    NavigationLink(destination: DetailedLogView(targetEntryID: entry.id)) {
                         HStack {
-                            Text("VIEW FULL LOG")
+                            Text("OPEN FULL SEQUENCE LOG")
                             Image(systemName: "chevron.right")
                         }
                         .font(.nothingMeta)
                         .foregroundStyle(DesignSystem.Colors.nothingRed)
                     }
+                    .padding(.top, 4)
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 12)
-                .transition(.opacity)
+                .padding(.bottom, 16)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .liquidGlass(cornerRadius: 16) // Card look per row
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive, action: onDelete) {
+                Label("Delete", systemImage: "trash")
             }
         }
     }
 }
+
 
 struct StatusIndicator: View {
     let status: VideoEntry.DownloadStatus

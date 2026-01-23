@@ -23,7 +23,7 @@ class YTDLPManager: ObservableObject {
                   format: String = "mp4",
                   bitrate: String = "192",
                   statusHandler: @escaping (Double, String) -> Void,
-                  completion: @escaping (Result<(URL, String), Error>) -> Void) {
+                  completion: @escaping (Result<URL, Error>, String?) -> Void) {
         
         Task {
             do {
@@ -36,7 +36,7 @@ class YTDLPManager: ObservableObject {
                 
             } catch {
                 print("[API] Error starting download: \(error)")
-                completion(.failure(error))
+                completion(.failure(error), nil)
             }
         }
     }
@@ -44,7 +44,7 @@ class YTDLPManager: ObservableObject {
     /// Poll job status until completion
     private func pollStatus(jobId: String,
                            statusHandler: @escaping (Double, String) -> Void,
-                           completion: @escaping (Result<(URL, String), Error>) -> Void) async throws {
+                           completion: @escaping (Result<URL, Error>, String?) -> Void) async throws {
         
         print("[YTDLP] Starting poll for \(jobId)")
         var attempts = 0
@@ -61,25 +61,21 @@ class YTDLPManager: ObservableObject {
                 case "completed":
                     // Download file
                     let tempDir = FileManager.default.temporaryDirectory
-                    // CRITICAL: Use the filename from the backend to preserve extension for QuickLook
                     let fileName = status.filename ?? status.title?.appending(".mp4") ?? "video.mp4"
                     let destination = tempDir.appendingPathComponent(fileName)
                     
-                    // Cleanup existing file if any
                     if FileManager.default.fileExists(atPath: destination.path) {
                         try? FileManager.default.removeItem(at: destination)
                     }
                     
                     try await apiClient.downloadFile(jobId: jobId, to: destination)
-                    
-                    // Get log
-                    let log = try await apiClient.getLog(jobId: jobId)
-                    
-                    completion(.success((destination, log)))
+                    let log = try? await apiClient.getLog(jobId: jobId)
+                    completion(.success(destination), log)
                     return
                     
                 case "failed":
-                    completion(.failure(YTDLPError.apiError(status.message)))
+                    let log = try? await apiClient.getLog(jobId: jobId)
+                    completion(.failure(YTDLPError.apiError(status.message)), log)
                     return
                     
                 default:
@@ -90,13 +86,14 @@ class YTDLPManager: ObservableObject {
                 
             } catch {
                 print("[API] Polling error: \(error)")
-                completion(.failure(error))
+                let log = try? await apiClient.getLog(jobId: jobId)
+                completion(.failure(error), log)
                 return
             }
         }
         
-        // Timeout
-        completion(.failure(YTDLPError.timeout))
+        let log = try? await apiClient.getLog(jobId: jobId)
+        completion(.failure(YTDLPError.timeout), log)
     }
     
     func cancel() {

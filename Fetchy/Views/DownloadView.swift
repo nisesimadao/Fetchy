@@ -194,12 +194,12 @@ struct DownloadView: View {
                     self.statusMessage = status.uppercased()
                 }
             }
-        ) { result in
+        ) { result, logs in
             DispatchQueue.main.async {
                 withAnimation { self.isDownloading = false }
                 
                 switch result {
-                case .success(let (fileURL, log)):
+                case .success(let fileURL):
                     self.statusMessage = "COMPLETED"
                     self.progress = 1.0
                     
@@ -212,10 +212,9 @@ struct DownloadView: View {
                         status: .completed,
                         localPath: fileURL.path
                     )
-                    DatabaseManager.shared.insert(entry: entry, rawLog: log)
+                    DatabaseManager.shared.insert(entry: entry, rawLog: logs)
                     
                     self.previewURL = fileURL
-                    // Small delay to ensure UI state is stable before presenting sheet
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         self.showPreview = true
                     }
@@ -223,6 +222,16 @@ struct DownloadView: View {
                 case .failure(let error):
                     self.statusMessage = "ERROR: \(error.localizedDescription)"
                     UINotificationFeedbackGenerator().notificationOccurred(.error)
+                    
+                    // Save failure to database as well
+                    let entry = VideoEntry(
+                        title: "Failed: \(URL(string: self.urlInput)?.host ?? "Link")",
+                        url: self.urlInput,
+                        service: "Direct",
+                        status: .failed,
+                        localPath: nil
+                    )
+                    DatabaseManager.shared.insert(entry: entry, rawLog: logs ?? error.localizedDescription)
                 }
             }
         }

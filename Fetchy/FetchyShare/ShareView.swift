@@ -238,10 +238,10 @@ struct ShareView: View {
                 self.statusMessage = status
                 checkTimeWarnings()
             }
-        }) { result in
+        }) { result, logs in
             DispatchQueue.main.async {
                 switch result {
-                case .success(let (fileURL, log)):
+                case .success(let fileURL):
                     self.downloadedFileURL = fileURL
                     self.state = .readyForPreview
                     self.progress = 1.0
@@ -255,7 +255,7 @@ struct ShareView: View {
                         status: .completed,
                         localPath: fileURL.path
                     )
-                    DatabaseManager.shared.insert(entry: entry, rawLog: log)
+                    DatabaseManager.shared.insert(entry: entry, rawLog: logs)
                     
                     // Auto-open QuickLook
                     openQuickLook(url: fileURL)
@@ -264,6 +264,16 @@ struct ShareView: View {
                     self.showToast(error.localizedDescription)
                     self.state = .error(error.localizedDescription)
                     UINotificationFeedbackGenerator().notificationOccurred(.error)
+                    
+                    // Save failure to database as well
+                    let entry = VideoEntry(
+                        title: "Failed: \(url.host ?? "Link")",
+                        url: url.absoluteString,
+                        service: url.host ?? "Unknown",
+                        status: .failed,
+                        localPath: nil
+                    )
+                    DatabaseManager.shared.insert(entry: entry, rawLog: logs ?? error.localizedDescription)
                 }
             }
         }

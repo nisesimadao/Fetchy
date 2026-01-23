@@ -1,5 +1,3 @@
-import SwiftUI
-
 // MARK: - Design System Constants
 
 enum DesignSystem {
@@ -8,7 +6,7 @@ enum DesignSystem {
         static let glassDark = Color.black.opacity(0.6)
         static let borderLight = Color.white.opacity(0.6)
         static let borderDark = Color.white.opacity(0.1)
-        static let nothingRed = Color(red: 0.85, green: 0.1, blue: 0.1) // Typical Nothing accent
+        static let nothingRed = Color(red: 0.85, green: 0.1, blue: 0.1)
     }
     
     enum Spacing {
@@ -18,7 +16,8 @@ enum DesignSystem {
     }
     
     enum CornerRadius {
-        static let squircle: CGFloat = 24 // Soft continuous curve approximation
+        static let squircle: CGFloat = 24
+        static let card: CGFloat = 16
     }
 }
 
@@ -26,87 +25,76 @@ enum DesignSystem {
 
 struct LiquidGlassModifier: ViewModifier {
     @Environment(\.colorScheme) var colorScheme
+    let cornerRadius: CGFloat
     
-    func body(content: Content) -> some View {
-        // Logic for OS Versioning (Simulated for "iOS 26+")
-        // In a real build, #available(iOS 26, *) would replace this check.
-        // For now, we default to the manual stack as 2026 is < iOS 26.
-        if #available(iOS 26, *) {
-            content.glassEffect() // Hypothetical API
-        } else {
-            manualStack(content)
-        }
+    init(cornerRadius: CGFloat = DesignSystem.CornerRadius.squircle) {
+        self.cornerRadius = cornerRadius
     }
     
-    @ViewBuilder
-    private func manualStack(_ content: Content) -> some View {
+    func body(content: Content) -> some View {
         content
             .background(
                 ZStack {
-                    // A. Material & Blur
-                    // Note: In strict SwiftUI, visualEffect or separate UIViewRepresentable is often needed for precise Gaussian blur radius in px.
-                    // Here we use native material + color overlays to approximate.
-                    
-                    // Fallback solid for non-blur environments
-                   if colorScheme == .dark {
-                       Color.black.opacity(0.8)
-                   } else {
-                       Color.white.opacity(0.8)
-                   }
+                    // Optimized manual stack to prevent distortion on tall views
+                    // Fallback solid
+                    if colorScheme == .dark {
+                        Color.black.opacity(0.8)
+                    } else {
+                        Color.white.opacity(0.8)
+                    }
 
-                    // The "Thin Optical Glass" Simulation
+                    // A. Material & Blur
                     Rectangle()
                         .fill(colorScheme == .dark ? DesignSystem.Colors.glassDark : DesignSystem.Colors.glassLight)
-                        .background(.ultraThinMaterial) // Closest native approximation to blur(12-15px)
-                        .environment(\.colorScheme, colorScheme) // Maintain scheme
+                        .background(.ultraThinMaterial)
                     
-                    // B. Refraction highlight (Inner Border)
-                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.squircle, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(
-                                gradient: Gradient(stops: [
-                                    .init(color: .white.opacity(0.6), location: 0), // Top-left specular
-                                    .init(color: .white.opacity(0.1), location: 1)  // Bottom-right fade
-                                ]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1.5
-                        )
-                    
-                    // B. Lens Thickness (Inner Shadow approximation)
-                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.squircle, style: .continuous)
-                        .stroke(Color.white.opacity(0.2), lineWidth: 10)
-                        .blur(radius: 5) // Soften to create "inset glow/thickness" effect
-                        .mask(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.squircle, style: .continuous))
+                    // B. Refraction & Lens Thickness
+                    // Using an overlay stroke instead of inner geometry for better stability
                 }
             )
-            // C. Specular Highlights (Surface Sheen)
+            // B. Refraction highlight (Inner Border)
             .overlay(
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        .white.opacity(0.05),
-                        .clear,
-                        .clear
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .center
-                )
-                .mask(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.squircle, style: .continuous))
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(
+                            gradient: Gradient(stops: [
+                                .init(color: .white.opacity(0.4), location: 0),
+                                .init(color: .white.opacity(0.05), location: 1)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             )
-            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.squircle, style: .continuous))
-            // B. Outer Stroke (Silhouette)
+            // C. Specular Highlights
             .overlay(
-                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.squircle, style: .continuous)
-                    .stroke(Color.black.opacity(0.05), lineWidth: 0.5)
+                contentHeightClippingSheen()
             )
-            // Physics-based scaling handled by button styles usually, but can be added here if this acts as a container
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            // Outer Silhouette
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(colorScheme == .dark ? .white.opacity(0.1) : .black.opacity(0.05), lineWidth: 0.5)
+            )
+    }
+    
+    @ViewBuilder
+    private func contentHeightClippingSheen() -> some View {
+        // Simplified sheen that doesn't stretch weirdly on tall items
+        GeometryReader { _ in
+            LinearGradient(
+                gradient: Gradient(colors: [.white.opacity(0.05), .clear]),
+                startPoint: .topLeading,
+                endPoint: .center
+            )
+        }
     }
 }
 
 extension View {
-    func liquidGlass() -> some View {
-        self.modifier(LiquidGlassModifier())
+    func liquidGlass(cornerRadius: CGFloat = DesignSystem.CornerRadius.squircle) -> some View {
+        self.modifier(LiquidGlassModifier(cornerRadius: cornerRadius))
     }
 }
 
@@ -114,11 +102,9 @@ extension View {
 
 // Font Extensions
 extension Font {
-    static let nothingHeader = Font.system(size: 24, weight: .semibold, design: .default)
-    static let nothingBody = Font.system(size: 16, weight: .regular, design: .default)
-    
-    // Dot Matrix / Monospaced for Meta info
-    static let nothingMeta = Font.system(size: 12, weight: .medium, design: .monospaced)
+    static let nothingHeader = Font.system(size: 20, weight: .semibold, design: .default)
+    static let nothingBody = Font.system(size: 15, weight: .regular, design: .default)
+    static let nothingMeta = Font.system(size: 11, weight: .medium, design: .monospaced)
 }
 
 // Dot Matrix Text Component
@@ -128,7 +114,7 @@ struct DotMatrixText: View {
     var body: some View {
         Text(text.uppercased())
             .font(.nothingMeta)
-            .kerning(1.2) // Wide tracking for industrial feel
+            .kerning(1.2)
             .foregroundStyle(.secondary)
     }
 }
@@ -138,8 +124,8 @@ struct IndustrialButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.nothingBody)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
             .background(
                 Capsule()
                     .fill(Color.primary.opacity(0.05))
@@ -157,20 +143,21 @@ struct IndustrialButtonStyle: ButtonStyle {
 
 struct ToastView: View {
     let message: String
-    let isWarning: Bool
+    var isWarning: Bool = false
     
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: isWarning ? "exclamationmark.triangle" : "info.circle")
                 .font(.system(size: 14, weight: .bold))
+                .foregroundColor(isWarning ? .yellow : DesignSystem.Colors.nothingRed)
             
             Text(message)
-                .font(.nothingBody)
+                .font(.nothingMeta)
                 .lineLimit(2)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .liquidGlass() // Apply our signature material
+        .padding(.vertical, 10)
+        .liquidGlass(cornerRadius: 12)
         .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
     }
 }
