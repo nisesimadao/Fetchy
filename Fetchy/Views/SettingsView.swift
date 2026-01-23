@@ -44,7 +44,18 @@ struct SettingsView: View {
                     Picker("Audio Quality", selection: $settings.defaultQuality) {
                         Text("44.1kHz").tag("44.1k")
                         Text("48kHz").tag("48k")
+                        Text("96kHz").tag("96k")
                         Text("Lossless").tag("lossless")
+                    }
+                }
+                
+                Section(header: DotMatrixText(text: "DIAGNOSTICS")) {
+                    NavigationLink(destination: DetailedLogView()) {
+                        HStack {
+                            Image(systemName: "terminal")
+                                .foregroundStyle(DesignSystem.Colors.nothingRed)
+                            Text("Detailed Logs (Raw DB)")
+                        }
                     }
                 }
                 

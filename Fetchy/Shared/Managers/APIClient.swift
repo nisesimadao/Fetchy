@@ -5,8 +5,12 @@ import Combine
 class APIClient: ObservableObject {
     static let shared = APIClient()
     
-    // TODO: Replace with your Railway deployment URL
-    private let baseURL = "https://your-railway-app.railway.app"
+    // IMPORTANT: Replace with your Railway public domain
+    // 1. Go to Railway Dashboard → Settings → Networking
+    // 2. Click "Generate Domain" under Public Networking
+    // 3. Copy the generated URL (e.g., https://fetchy-api-production-xxxx.up.railway.app)
+    // 4. Paste it here (without trailing slash)
+    private let baseURL = "https://fetchy-api-production.up.railway.app"
     
     private let session: URLSession
     

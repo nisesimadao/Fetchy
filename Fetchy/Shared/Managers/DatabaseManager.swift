@@ -34,8 +34,12 @@ class DatabaseManager {
             service TEXT,
             date REAL,
             status TEXT,
-            localPath TEXT
+            localPath TEXT,
+            rawLog TEXT
         );
+        CREATE INDEX IF NOT EXISTS idx_date ON VideoEntries(date);
+        CREATE INDEX IF NOT EXISTS idx_service ON VideoEntries(service);
+        CREATE INDEX IF NOT EXISTS idx_status ON VideoEntries(status);
         """
         
         var createTableStatement: OpaquePointer?
@@ -51,8 +55,8 @@ class DatabaseManager {
         sqlite3_finalize(createTableStatement)
     }
     
-    func insert(entry: VideoEntry) {
-        let insertStatementString = "INSERT INTO VideoEntries (id, title, url, service, date, status, localPath) VALUES (?, ?, ?, ?, ?, ?, ?);"
+    func insert(entry: VideoEntry, rawLog: String? = nil) {
+        let insertStatementString = "INSERT INTO VideoEntries (id, title, url, service, date, status, localPath, rawLog) VALUES (?, ?, ?, ?, ?, ?, ?, ?);"
         var insertStatement: OpaquePointer?
         
         if sqlite3_prepare_v2(db, insertStatementString, -1, &insertStatement, nil) == SQLITE_OK {
@@ -63,6 +67,7 @@ class DatabaseManager {
             let dateVal = entry.date.timeIntervalSince1970
             let statusStr = entry.status.rawValue as NSString
             let localPathStr = (entry.localPath ?? "") as NSString
+            let rawLogStr = (rawLog ?? "") as NSString
             
             sqlite3_bind_text(insertStatement, 1, idStr.utf8String, -1, nil)
             sqlite3_bind_text(insertStatement, 2, titleStr.utf8String, -1, nil)
@@ -71,6 +76,7 @@ class DatabaseManager {
             sqlite3_bind_double(insertStatement, 5, dateVal)
             sqlite3_bind_text(insertStatement, 6, statusStr.utf8String, -1, nil)
             sqlite3_bind_text(insertStatement, 7, localPathStr.utf8String, -1, nil)
+            sqlite3_bind_text(insertStatement, 8, rawLogStr.utf8String, -1, nil)
             
             if sqlite3_step(insertStatement) == SQLITE_DONE {
                 print("Successfully inserted row.")
@@ -121,6 +127,42 @@ class DatabaseManager {
         }
         sqlite3_finalize(queryStatement)
         return entries
+    }
+    
+    func deleteEntry(id: UUID) {
+        let deleteStatementString = "DELETE FROM VideoEntries WHERE id = ?;"
+        var deleteStatement: OpaquePointer?
+        if sqlite3_prepare_v2(db, deleteStatementString, -1, &deleteStatement, nil) == SQLITE_OK {
+            sqlite3_bind_text(deleteStatement, 1, (id.uuidString as NSString).utf8String, -1, nil)
+            sqlite3_step(deleteStatement)
+        }
+        sqlite3_finalize(deleteStatement)
+    }
+    
+    func deleteEntries(before date: Date) {
+        let deleteStatementString = "DELETE FROM VideoEntries WHERE date < ?;"
+        var deleteStatement: OpaquePointer?
+        if sqlite3_prepare_v2(db, deleteStatementString, -1, &deleteStatement, nil) == SQLITE_OK {
+            sqlite3_bind_double(deleteStatement, 1, date.timeIntervalSince1970)
+            sqlite3_step(deleteStatement)
+        }
+        sqlite3_finalize(deleteStatement)
+    }
+    
+    func fetchRawLog(for id: UUID) -> String? {
+        let queryString = "SELECT rawLog FROM VideoEntries WHERE id = ?;"
+        var queryStatement: OpaquePointer?
+        var log: String? = nil
+        if sqlite3_prepare_v2(db, queryString, -1, &queryStatement, nil) == SQLITE_OK {
+            sqlite3_bind_text(queryStatement, 1, (id.uuidString as NSString).utf8String, -1, nil)
+            if sqlite3_step(queryStatement) == SQLITE_ROW {
+                if let cStr = sqlite3_column_text(queryStatement, 0) {
+                    log = String(cString: cStr)
+                }
+            }
+        }
+        sqlite3_finalize(queryStatement)
+        return log
     }
     
     deinit {

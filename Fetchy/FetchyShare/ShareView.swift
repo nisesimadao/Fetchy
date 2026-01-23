@@ -11,13 +11,21 @@ struct ShareView: View {
     @State private var downloadedFileURL: URL?
     @State private var showProgressOverride: Bool = false // User tapped to show
     
-    enum ShareState {
+    enum ShareState: Equatable {
         case initial
         case downloading
         case readyForPreview
         case error(String)
-        case success // Post-preview
+        case success
     }
+    
+    @State private var statusMessage: String = "ANALYZING..."
+    @State private var lastHapticProgress: Double = 0.0
+    @State private var startTime: Date?
+    @State private var toastMessage: String?
+    @State private var isShowingToast = false
+    
+    private let hapticGenerator = UIImpactFeedbackGenerator(style: .light)
     
     var body: some View {
         ZStack {
@@ -28,8 +36,10 @@ struct ShareView: View {
             
             VStack(spacing: 20) {
                 // Header / Initial Info
-                if state != .readyForPreview {
-                    VStack(spacing: 8) {
+                if case .readyForPreview = state {
+                    // Skip header when ready for preview
+                } else {
+                    VStack(spacing: 12) {
                         Image(systemName: "arrow.down.circle.fill")
                             .font(.system(size: 40))
                             .foregroundStyle(DesignSystem.Colors.nothingRed)
@@ -165,26 +175,68 @@ struct ShareView: View {
     
     private func startDownload(url: URL) {
         state = .downloading
+        startTime = Date()
         
-        YTDLPManager.shared.download(url: url.absoluteString, progressHandler: { prog in
-            self.progress = prog
-            // Haptic trigger could go here (every 2%)
+        YTDLPManager.shared.download(url: url.absoluteString, statusHandler: { prog, status in
+            if prog >= 0 {
+                self.progress = prog
+                checkHaptics(prog)
+            }
+            self.statusMessage = status
+            checkTimeWarnings()
         }) { result in
             DispatchQueue.main.async {
                 switch result {
-                case .success(let fileURL):
+                case .success(let (fileURL, log)):
                     self.downloadedFileURL = fileURL
                     self.state = .readyForPreview
-                    // Save to DB history
-                    let entry = VideoEntry(title: "Downloaded Video", url: url.absoluteString, service: "Share", status: .completed, localPath: fileURL.path)
-                    DatabaseManager.shared.insert(entry: entry)
+                    let entry = VideoEntry(
+                        title: fileURL.lastPathComponent,
+                        url: url.absoluteString,
+                        service: url.host ?? "Unknown",
+                        status: .completed,
+                        localPath: fileURL.path
+                    )
+                    DatabaseManager.shared.insert(entry: entry, rawLog: log)
                     
                 case .failure(let error):
+                    self.showToast(error.localizedDescription)
                     self.state = .error(error.localizedDescription)
                 }
             }
         }
     }
+    
+    private func checkHaptics(_ prog: Double) {
+        if SettingsManager.shared.vibrationEnabled {
+            if prog >= lastHapticProgress + 0.02 {
+                hapticGenerator.impactOccurred()
+                lastHapticProgress = prog
+            }
+        }
+    }
+    
+    private func checkTimeWarnings() {
+        guard SettingsManager.shared.toastEnabled else { return }
+        guard let start = startTime else { return }
+        let elapsed = Date().timeIntervalSince(start)
+        
+        if elapsed > 480 { // 8 minutes
+            showToast("ダウンロード中です。OSにより中断される可能性があります。")
+        } else if elapsed > 300 { // 5 minutes
+            showToast("長時間経過するとOSにより中断される可能性があります。")
+        }
+    }
+    
+    private func showToast(_ message: String) {
+        guard toastMessage != message else { return }
+        toastMessage = message
+        withAnimation { isShowingToast = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+            withAnimation { isShowingToast = false }
+        }
+    }
+
     
     private func openQuickLook(url: URL) {
         // In a real generic SwiftUI view, we might need a wrapper or bridge to QLPreviewController

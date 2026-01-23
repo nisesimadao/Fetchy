@@ -45,9 +45,9 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Design/DesignComponents.swift,
+				Shared/Managers/APIClient.swift,
 				Shared/Managers/DatabaseManager.swift,
 				Shared/Managers/SettingsManager.swift,
-				"Shared/Managers/yt-dlp",
 				Shared/Managers/YTDLPManager.swift,
 				Shared/Models/VideoEntry.swift,
 			);
@@ -369,7 +369,6 @@
 				DEVELOPMENT_TEAM = KGJC56RFVX;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Fetchy/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Fetchy;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -406,7 +405,6 @@
 				DEVELOPMENT_TEAM = KGJC56RFVX;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Fetchy/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Fetchy;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

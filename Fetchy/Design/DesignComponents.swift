@@ -31,9 +31,8 @@ struct LiquidGlassModifier: ViewModifier {
         // Logic for OS Versioning (Simulated for "iOS 26+")
         // In a real build, #available(iOS 26, *) would replace this check.
         // For now, we default to the manual stack as 2026 is < iOS 26.
-        if false /* #available(iOS 26, *) */ {
-            // content.glassEffect() // Hypothetical API
-            manualStack(content)
+        if #available(iOS 26, *) {
+            content.glassEffect() // Hypothetical API
         } else {
             manualStack(content)
         }

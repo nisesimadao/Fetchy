@@ -10,7 +10,6 @@ struct DetailedLogView: View {
     
     var body: some View {
         ZStack {
-            // Background
             Color(uiColor: .systemGroupedBackground)
                 .ignoresSafeArea()
             
@@ -39,12 +38,10 @@ struct DetailedLogView: View {
                                     showingLogViewer = true
                                 }) {
                                     HStack(alignment: .top) {
-                                        // Date
                                         Text(formatDate(entry.date))
                                             .font(.system(.caption2, design: .monospaced))
                                             .frame(width: 80, alignment: .leading)
                                         
-                                        // Details
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(entry.id.uuidString.prefix(8) + "...")
                                                 .font(.system(.caption2, design: .monospaced))
@@ -60,7 +57,6 @@ struct DetailedLogView: View {
                                         
                                         Spacer()
                                         
-                                        // Status
                                         Text(entry.status.rawValue.uppercased())
                                             .font(.nothingMeta)
                                             .foregroundStyle(statusColor(entry.status))
@@ -76,11 +72,8 @@ struct DetailedLogView: View {
                             }
                         }
                         
-                        // "Load More" Button or pagination indicator
                         if entries.count >= limit && entries.count % limit == 0 {
-                            Button(action: {
-                                loadMore()
-                            }) {
+                            Button(action: loadMore) {
                                 Text("LOAD MORE (OFFSET: \(offset))")
                                     .font(.nothingMeta)
                                     .padding()
@@ -124,7 +117,6 @@ struct DetailedLogView: View {
             }
         }
     }
-
     
     private func loadEntries() {
         let fetched = DatabaseManager.shared.fetchEntries(limit: limit, offset: 0)

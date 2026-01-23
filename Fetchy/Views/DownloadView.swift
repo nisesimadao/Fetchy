@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct DownloadView: View {
+    @ObservedObject var settings = SettingsManager.shared
     @State private var urlInput: String = ""
     @State private var isDownloading = false
     @State private var progress: Double = 0.0
     @State private var statusMessage: String = "READY"
+    @State private var showProgress = false
     
     var body: some View {
         NavigationView {
@@ -20,12 +22,7 @@ struct DownloadView: View {
                         
                         TextField("Paste Link Here...", text: $urlInput)
                             .padding()
-                            .background(Color.white.opacity(0.5)) // Slightly more opaque for input
-                            .cornerRadius(12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .strokeBorder(Color.primary.opacity(0.1))
-                            )
+                            .liquidGlass()
                             .submitLabel(.go)
                             .onSubmit {
                                 startDownload()
@@ -34,7 +31,7 @@ struct DownloadView: View {
                     .padding(.horizontal)
                     
                     // Progress & Status
-                    if isDownloading {
+                    if isDownloading && (showProgress || settings.progressVisible) {
                         VStack(spacing: 12) {
                             DotMatrixText(text: statusMessage)
                             
@@ -56,6 +53,17 @@ struct DownloadView: View {
                         }
                         .padding()
                         .liquidGlass()
+                        .padding(.horizontal)
+                    } else if isDownloading {
+                        // Show toggle button if progress is hidden
+                        Button(action: { showProgress = true }) {
+                            HStack {
+                                Text("SHOW PROGRESS")
+                                Image(systemName: "percent")
+                            }
+                            .font(.nothingMeta)
+                        }
+                        .buttonStyle(IndustrialButtonStyle())
                         .padding(.horizontal)
                     }
                     
@@ -82,16 +90,29 @@ struct DownloadView: View {
         statusMessage = "INITIALIZING..."
         progress = 0.0
         
-        // Use YTDLPManager
-        YTDLPManager.shared.download(url: urlInput, progressHandler: { prog in
-            self.progress = prog
-            self.statusMessage = "DOWNLOADING..."
+        // Use YTDLPManager (API version)
+        YTDLPManager.shared.download(url: urlInput, statusHandler: { prog, status in
+            if prog >= 0 {
+                self.progress = prog
+            }
+            self.statusMessage = status.uppercased()
         }) { result in
             DispatchQueue.main.async {
                 self.isDownloading = false
                 switch result {
-                case .success(_):
+                case .success(let (fileURL, log)):
                     self.statusMessage = "COMPLETED"
+                    
+                    // Save to database
+                    let entry = VideoEntry(
+                        title: fileURL.lastPathComponent,
+                        url: self.urlInput,
+                        service: "Direct",
+                        status: .completed,
+                        localPath: fileURL.path
+                    )
+                    DatabaseManager.shared.insert(entry: entry, rawLog: log)
+                    
                     self.urlInput = ""
                 case .failure(let error):
                     self.statusMessage = "ERROR: \(error.localizedDescription)"
@@ -99,4 +120,5 @@ struct DownloadView: View {
             }
         }
     }
+
 }

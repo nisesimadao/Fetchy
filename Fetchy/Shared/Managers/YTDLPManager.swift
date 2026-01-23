@@ -1,170 +1,96 @@
 import Foundation
 import Combine
 
-// MARK: - Process Polyfill for iOS
-// 'Process' (NSTask) is not public on iOS, but exists in the runtime.
-// This allows compilation on iOS to support 'Designed for iPad' on Mac.
-#if os(iOS)
-class Process: NSObject {
-    private let task: AnyObject
-    
-    var executableURL: URL? {
-        didSet {
-            task.setValue(executableURL?.path, forKey: "launchPath")
-        }
-    }
-    
-    var arguments: [String]? {
-        didSet {
-            task.setValue(arguments, forKey: "arguments")
-        }
-    }
-    
-    var standardOutput: Any? {
-        didSet {
-            task.setValue(standardOutput, forKey: "standardOutput")
-        }
-    }
-    
-    var standardError: Any? {
-        didSet {
-            task.setValue(standardError, forKey: "standardError")
-        }
-    }
-    
-    var terminationHandler: ((Process) -> Void)?
-    var terminationStatus: Int32 {
-        return (task.value(forKey: "terminationStatus") as? Int32) ?? 0
-    }
-    
-    override init() {
-        let taskClass = NSClassFromString("NSTask") as! NSObject.Type
-        self.task = taskClass.init()
-        super.init()
-        
-        NotificationCenter.default.addObserver(self, selector: #selector(taskDidTerminate(_:)), name: NSNotification.Name("NSTaskDidTerminateNotification"), object: task)
-    }
-    
-    func run() throws {
-        let selector = Selector(("launch"))
-        if task.responds(to: selector) {
-            _ = task.perform(selector)
-        } else {
-            throw YTDLPError.osNotSupported
-        }
-    }
-    
-    func terminate() {
-        _ = task.perform(Selector(("terminate")))
-    }
-    
-    @objc private func taskDidTerminate(_ notification: Notification) {
-        terminationHandler?(self)
-    }
-}
-#endif
-
 enum YTDLPError: Error {
-    case binaryNotFound
-    case processFailed(Int32)
-    case cancelled
+    case apiError(String)
+    case networkError(Error)
+    case timeout
     case unknown
-    case osNotSupported
 }
 
 class YTDLPManager: ObservableObject {
     static let shared = YTDLPManager()
     
-    private var currentProcess: Process?
-    private var outputPipe: Pipe?
+    private var pollingTask: Task<Void, Never>?
+    private let apiClient = APIClient.shared
     
-    func download(url: String, 
-                  quality: String = "1080p", 
-                  progressHandler: @escaping (Double) -> Void, 
-                  completion: @escaping (Result<URL, Error>) -> Void) {
+    private init() {}
+    
+    /// Download video via Railway API
+    func download(url: String,
+                  quality: String = "1080p",
+                  statusHandler: @escaping (Double, String) -> Void,
+                  completion: @escaping (Result<(URL, String), Error>) -> Void) {
         
-        guard let binaryPath = Bundle.main.path(forResource: "yt-dlp", ofType: nil) else {
-            completion(.failure(YTDLPError.binaryNotFound))
-            return
-        }
-        
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        let outputPathTemplate = tempDir.appendingPathComponent("%(title)s.%(ext)s").path
-        
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: binaryPath)
-        process.arguments = [
-            "--newline",
-            "--progress",
-            "-o", outputPathTemplate,
-            url
-        ]
-        
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-        self.outputPipe = pipe
-        self.currentProcess = process
-        
-        let outHandle = pipe.fileHandleForReading
-        outHandle.readabilityHandler = { handle in
-            let data = handle.availableData
-            if data.isEmpty { return }
-            if let str = String(data: data, encoding: .utf8) {
-                self.parseProgress(from: str, handler: progressHandler)
+        Task {
+            do {
+                // Start download job
+                let jobId = try await apiClient.startDownload(url: url, quality: quality)
+                print("[API] Job started: \(jobId)")
+                
+                // Poll for status
+                try await pollStatus(jobId: jobId, statusHandler: statusHandler, completion: completion)
+                
+            } catch {
+                print("[API] Error starting download: \(error)")
+                completion(.failure(error))
             }
         }
+    }
+    
+    /// Poll job status until completion
+    private func pollStatus(jobId: String,
+                           statusHandler: @escaping (Double, String) -> Void,
+                           completion: @escaping (Result<(URL, String), Error>) -> Void) async throws {
         
-        process.terminationHandler = { (proc: Process) in
-            outHandle.readabilityHandler = nil
-            
-            if proc.terminationStatus == 0 {
-                do {
-                    let files = try FileManager.default.contentsOfDirectory(at: tempDir, includingPropertiesForKeys: nil)
-                    if let videoFile = files.first {
-                        completion(.success(videoFile))
-                    } else {
-                        completion(.failure(YTDLPError.unknown))
-                    }
-                } catch {
-                    completion(.failure(error))
+        var attempts = 0
+        let maxAttempts = 600 // 10 minutes with 1s intervals
+        
+        while attempts < maxAttempts {
+            do {
+                let status = try await apiClient.getStatus(jobId: jobId)
+                
+                // Update progress
+                statusHandler(status.progress, status.message)
+                
+                switch status.status {
+                case "completed":
+                    // Download file
+                    let tempDir = FileManager.default.temporaryDirectory
+                    let fileName = status.title ?? "video.mp4"
+                    let destination = tempDir.appendingPathComponent(fileName)
+                    
+                    try await apiClient.downloadFile(jobId: jobId, to: destination)
+                    
+                    // Get log
+                    let log = try await apiClient.getLog(jobId: jobId)
+                    
+                    completion(.success((destination, log)))
+                    return
+                    
+                case "failed":
+                    completion(.failure(YTDLPError.apiError(status.message)))
+                    return
+                    
+                default:
+                    // Continue polling
+                    try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                    attempts += 1
                 }
-            } else {
-                completion(.failure(YTDLPError.processFailed(proc.terminationStatus)))
+                
+            } catch {
+                print("[API] Polling error: \(error)")
+                completion(.failure(error))
+                return
             }
-            self.currentProcess = nil
         }
         
-        do {
-            try process.run()
-        } catch {
-            completion(.failure(error))
-        }
+        // Timeout
+        completion(.failure(YTDLPError.timeout))
     }
     
     func cancel() {
-        currentProcess?.terminate()
-        currentProcess = nil
-    }
-    
-    private func parseProgress(from output: String, handler: @escaping (Double) -> Void) {
-        let lines = output.components(separatedBy: "\n")
-        for line in lines {
-            if line.contains("[download]") && line.contains("%") {
-                let components = line.components(separatedBy: CharacterSet.whitespaces)
-                for comp in components {
-                    if comp.contains("%") {
-                        let numStr = comp.replacingOccurrences(of: "%", with: "")
-                        if let val = Double(numStr) {
-                            DispatchQueue.main.async {
-                                handler(val / 100.0)
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        pollingTask?.cancel()
+        pollingTask = nil
     }
 }
-
