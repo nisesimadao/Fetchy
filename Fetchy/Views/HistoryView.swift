@@ -53,6 +53,7 @@ struct HistoryView: View {
                                     .padding()
                                 }
                             }
+                            .cornerRadius(8)
                             .liquidGlass()
                             .padding()
                         }
