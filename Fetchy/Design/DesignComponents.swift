@@ -1,3 +1,5 @@
+import SwiftUI
+
 // MARK: - Design System Constants
 
 enum DesignSystem {
