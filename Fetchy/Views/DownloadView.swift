@@ -11,6 +11,7 @@ struct DownloadView: View {
     @State private var selectedResolution: String = "1080p"
     @State private var isAudioOnly: Bool = false
     @State private var selectedFormat: String = "mp4"
+    @State private var selectedBitrate: String = "192"
     
     // QuickLook support
     @State private var previewURL: URL?
@@ -19,6 +20,7 @@ struct DownloadView: View {
     let videoResolutions = ["2160p", "1080p", "720p", "480p"]
     let videoFormats = ["mp4", "webm", "mkv"]
     let audioFormats = ["mp3", "m4a", "wav"]
+    let audioBitrates = ["320", "256", "192", "128"]
     
     var body: some View {
         NavigationView {
@@ -65,6 +67,7 @@ struct DownloadView: View {
                         // Dynamic Pickers
                         if isAudioOnly {
                             pickerSection(title: "AUDIO FORMAT", items: audioFormats, selection: $selectedFormat)
+                            pickerSection(title: "BITRATE (kbps)", items: audioBitrates, selection: $selectedBitrate)
                         } else {
                             pickerSection(title: "RESOLUTION", items: videoResolutions, selection: $selectedResolution)
                             pickerSection(title: "CONTAINER", items: videoFormats, selection: $selectedFormat)
@@ -182,6 +185,7 @@ struct DownloadView: View {
             quality: selectedResolution,
             audioOnly: isAudioOnly,
             format: selectedFormat,
+            bitrate: selectedBitrate,
             statusHandler: { prog, status in
                 DispatchQueue.main.async {
                     if prog >= 0 {

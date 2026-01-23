@@ -21,13 +21,14 @@ class YTDLPManager: ObservableObject {
                   quality: String = "1080p",
                   audioOnly: Bool = false,
                   format: String = "mp4",
+                  bitrate: String = "192",
                   statusHandler: @escaping (Double, String) -> Void,
                   completion: @escaping (Result<(URL, String), Error>) -> Void) {
         
         Task {
             do {
                 // Start download job
-                let jobId = try await apiClient.startDownload(url: url, quality: quality, audioOnly: audioOnly, format: format)
+                let jobId = try await apiClient.startDownload(url: url, quality: quality, audioOnly: audioOnly, format: format, bitrate: bitrate)
                 print("[API] Job started: \(jobId)")
                 
                 // Poll for status
@@ -47,13 +48,11 @@ class YTDLPManager: ObservableObject {
         
         print("[YTDLP] Starting poll for \(jobId)")
         var attempts = 0
-        let maxAttempts = 600 // 10 minutes with 1s intervals
+        let maxAttempts = 600 // 5 minutes with 0.5s intervals
         
         while attempts < maxAttempts {
             do {
-                print("[YTDLP] Polling attempt \(attempts + 1)...")
                 let status = try await apiClient.getStatus(jobId: jobId)
-                print("[YTDLP] Received status: \(status.status) (\(Int(status.progress * 100))%)")
                 
                 // Update progress
                 statusHandler(status.progress, status.message)
@@ -62,8 +61,14 @@ class YTDLPManager: ObservableObject {
                 case "completed":
                     // Download file
                     let tempDir = FileManager.default.temporaryDirectory
-                    let fileName = status.title ?? "video.mp4"
+                    // CRITICAL: Use the filename from the backend to preserve extension for QuickLook
+                    let fileName = status.filename ?? status.title?.appending(".mp4") ?? "video.mp4"
                     let destination = tempDir.appendingPathComponent(fileName)
+                    
+                    // Cleanup existing file if any
+                    if FileManager.default.fileExists(atPath: destination.path) {
+                        try? FileManager.default.removeItem(at: destination)
+                    }
                     
                     try await apiClient.downloadFile(jobId: jobId, to: destination)
                     

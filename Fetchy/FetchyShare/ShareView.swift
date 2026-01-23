@@ -10,6 +10,9 @@ struct ShareView: View {
     @State private var progress: Double = 0.0
     @State private var downloadedFileURL: URL?
     @State private var selectedResolution: String = "1080p"
+    @State private var isAudioOnly: Bool = false
+    @State private var selectedFormat: String = "mp4"
+    @State private var selectedBitrate: String = "192"
     
     enum ShareState: Equatable {
         case initial
@@ -25,7 +28,11 @@ struct ShareView: View {
     @State private var toastMessage: String?
     @State private var isShowingToast = false
     
-    let resolutions = ["2160p", "1080p", "720p", "480p"]
+    let videoResolutions = ["2160p", "1080p", "720p", "480p"]
+    let videoFormats = ["mp4", "webm", "mkv"]
+    let audioFormats = ["mp3", "m4a", "wav"]
+    let audioBitrates = ["320", "256", "192", "128"]
+    
     private let hapticGenerator = UIImpactFeedbackGenerator(style: .light)
     
     var body: some View {
@@ -36,32 +43,36 @@ struct ShareView: View {
             
             VStack(spacing: 20) {
                 if state == .initial {
-                    VStack(spacing: 20) {
+                    VStack(spacing: 16) {
                         Image(systemName: "link.circle.fill")
                             .font(.system(size: 40))
                             .foregroundStyle(DesignSystem.Colors.nothingRed)
                         
-                        Text("LINK DETECTED")
+                        Text(videoTitle)
                             .font(.nothingHeader)
+                            .lineLimit(1)
                         
-                        // Resolution Selection
-                        VStack(alignment: .leading, spacing: 8) {
-                            DotMatrixText(text: "QUALITY PREFERENCE")
-                            
-                            HStack {
-                                ForEach(resolutions, id: \.self) { res in
-                                    Button(action: { selectedResolution = res }) {
-                                        Text(res)
-                                            .font(.nothingMeta)
-                                            .padding(.vertical, 8)
-                                            .frame(maxWidth: .infinity)
-                                            .background(selectedResolution == res ? DesignSystem.Colors.nothingRed : Color.secondary.opacity(0.1))
-                                            .foregroundColor(selectedResolution == res ? .white : .primary)
-                                            .cornerRadius(8)
-                                    }
-                                }
+                        // Mode Toggle
+                        HStack(spacing: 12) {
+                            selectionButton(title: "VIDEO", isActive: !isAudioOnly) {
+                                withAnimation { isAudioOnly = false; selectedFormat = "mp4" }
+                            }
+                            selectionButton(title: "AUDIO", isActive: isAudioOnly) {
+                                withAnimation { isAudioOnly = true; selectedFormat = "mp3" }
                             }
                         }
+                        
+                        // Pickers
+                        VStack(spacing: 10) {
+                            if isAudioOnly {
+                                miniPicker(title: "FORMAT", items: audioFormats, selection: $selectedFormat)
+                                miniPicker(title: "BITRATE", items: audioBitrates, selection: $selectedBitrate)
+                            } else {
+                                miniPicker(title: "QUALITY", items: videoResolutions, selection: $selectedResolution)
+                                miniPicker(title: "CONTAINER", items: videoFormats, selection: $selectedFormat)
+                            }
+                        }
+                        .padding(.vertical, 4)
                         
                         Button(action: {
                             if let url = foundURL {
@@ -139,6 +150,44 @@ struct ShareView: View {
         }
     }
     
+    // UI Helpers
+    private func selectionButton(title: String, isActive: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.nothingMeta)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
+                .background(isActive ? DesignSystem.Colors.nothingRed : Color.secondary.opacity(0.1))
+                .foregroundColor(isActive ? .white : .primary)
+                .cornerRadius(10)
+        }
+    }
+    
+    private func miniPicker(title: String, items: [String], selection: Binding<String>) -> some View {
+        HStack {
+            Text(title)
+                .font(.nothingMeta)
+                .foregroundStyle(.secondary)
+                .frame(width: 60, alignment: .leading)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(items, id: \.self) { item in
+                        Button(action: { selection.wrappedValue = item }) {
+                            Text(item.uppercased())
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(selection.wrappedValue == item ? Color.primary : Color.secondary.opacity(0.1))
+                                .foregroundColor(selection.wrappedValue == item ? Color(uiColor: .systemBackground) : .primary)
+                                .cornerRadius(4)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
     private var stateText: String {
         switch state {
         case .initial: return "READY"
@@ -174,7 +223,13 @@ struct ShareView: View {
         state = .downloading
         startTime = Date()
         
-        YTDLPManager.shared.download(url: url.absoluteString, quality: selectedResolution, statusHandler: { prog, status in
+        YTDLPManager.shared.download(
+            url: url.absoluteString, 
+            quality: selectedResolution,
+            audioOnly: isAudioOnly,
+            format: selectedFormat,
+            bitrate: selectedBitrate,
+            statusHandler: { prog, status in
             DispatchQueue.main.async {
                 if prog >= 0 {
                     self.progress = prog

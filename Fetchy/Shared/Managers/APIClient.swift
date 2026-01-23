@@ -22,7 +22,7 @@ class APIClient: ObservableObject {
     }
     
     /// Start a download job
-    func startDownload(url: String, quality: String = "1080p", audioOnly: Bool = false, format: String = "mp4") async throws -> String {
+    func startDownload(url: String, quality: String = "1080p", audioOnly: Bool = false, format: String = "mp4", bitrate: String = "192") async throws -> String {
         let endpoint = URL(string: "\(baseURL)/api/download")!
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
@@ -32,7 +32,8 @@ class APIClient: ObservableObject {
             "url": url, 
             "quality": quality,
             "audioOnly": audioOnly,
-            "format": format
+            "format": format,
+            "bitrate": bitrate
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
@@ -80,7 +81,6 @@ class APIClient: ObservableObject {
 
 struct DownloadResponse: Codable {
     let jobId: String
-    let status: String
 }
 
 struct JobStatus: Codable {
@@ -89,6 +89,7 @@ struct JobStatus: Codable {
     let message: String
     let downloadUrl: String?
     let title: String?
+    let filename: String?
 }
 
 struct LogResponse: Codable {
