@@ -43,12 +43,15 @@ class YTDLPManager: ObservableObject {
                            statusHandler: @escaping (Double, String) -> Void,
                            completion: @escaping (Result<(URL, String), Error>) -> Void) async throws {
         
+        print("[YTDLP] Starting poll for \(jobId)")
         var attempts = 0
         let maxAttempts = 600 // 10 minutes with 1s intervals
         
         while attempts < maxAttempts {
             do {
+                print("[YTDLP] Polling attempt \(attempts + 1)...")
                 let status = try await apiClient.getStatus(jobId: jobId)
+                print("[YTDLP] Received status: \(status.status) (\(Int(status.progress * 100))%)")
                 
                 // Update progress
                 statusHandler(status.progress, status.message)
