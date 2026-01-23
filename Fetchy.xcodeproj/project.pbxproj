@@ -41,26 +41,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		4F64015B2F23543C006DD610 /* Exceptions for "Fetchy" folder in "Fetchy" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				"/Localized: FetchyShare/MainInterface.storyboard",
-				FetchyShare/Info.plist,
-				FetchyShare/ShareView.swift,
-				FetchyShare/ShareViewController.swift,
-				Info.plist,
-			);
-			target = 4F64010E2F234D24006DD610 /* Fetchy */;
-		};
 		4F64015C2F23543C006DD610 /* Exceptions for "Fetchy" folder in "FetchyShare" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				"/Localized: FetchyShare/MainInterface.storyboard",
 				Design/DesignComponents.swift,
-				FetchyShare/ShareView.swift,
-				FetchyShare/ShareViewController.swift,
 				Shared/Managers/DatabaseManager.swift,
 				Shared/Managers/SettingsManager.swift,
+				"Shared/Managers/yt-dlp",
 				Shared/Managers/YTDLPManager.swift,
 				Shared/Models/VideoEntry.swift,
 			);
@@ -72,7 +59,6 @@
 		4F6401112F234D24006DD610 /* Fetchy */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				4F64015B2F23543C006DD610 /* Exceptions for "Fetchy" folder in "Fetchy" target */,
 				4F64015C2F23543C006DD610 /* Exceptions for "Fetchy" folder in "FetchyShare" target */,
 			);
 			path = Fetchy;
@@ -376,11 +362,14 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Fetchy/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Fetchy;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -410,11 +399,14 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Fetchy/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Fetchy;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -443,6 +435,7 @@
 				INFOPLIST_FILE = FetchyShare/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = FetchyShare;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -472,6 +465,7 @@
 				INFOPLIST_FILE = FetchyShare/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = FetchyShare;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

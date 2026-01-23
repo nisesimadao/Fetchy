@@ -47,14 +47,8 @@ struct HistoryRow: View {
     
     var body: some View {
         HStack(spacing: 16) {
-            // Icon Placeholder
-            Circle()
-                .fill(Color.secondary.opacity(0.1))
-                .frame(width: 40, height: 40)
-                .overlay(
-                    Image(systemName: "play.fill")
-                        .foregroundStyle(.secondary)
-                )
+            // Service Icon
+            ServiceIcon(entry.service)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.title)

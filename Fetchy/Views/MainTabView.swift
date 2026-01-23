@@ -26,3 +26,7 @@ struct MainTabView: View {
         .tint(DesignSystem.Colors.nothingRed)
     }
 }
+
+#Preview {
+    MainTabView()
+}
