@@ -10,34 +10,31 @@ class Process: NSObject {
     
     var executableURL: URL? {
         didSet {
-            if let path = executableURL?.path {
-                task.perform(Selector(("setLaunchPath:")), with: path)
-            }
+            task.setValue(executableURL?.path, forKey: "launchPath")
         }
     }
     
     var arguments: [String]? {
         didSet {
-            task.perform(Selector(("setArguments:")), with: arguments)
+            task.setValue(arguments, forKey: "arguments")
         }
     }
     
     var standardOutput: Any? {
         didSet {
-            task.perform(Selector(("setStandardOutput:")), with: standardOutput)
+            task.setValue(standardOutput, forKey: "standardOutput")
         }
     }
     
     var standardError: Any? {
         didSet {
-            task.perform(Selector(("setStandardError:")), with: standardError)
+            task.setValue(standardError, forKey: "standardError")
         }
     }
     
     var terminationHandler: ((Process) -> Void)?
     var terminationStatus: Int32 {
-        let status = task.perform(Selector(("terminationStatus")))
-        return Int32(UInt(bitPattern: Unmanaged.passUnretained(status!).toOpaque()))
+        return (task.value(forKey: "terminationStatus") as? Int32) ?? 0
     }
     
     override init() {
@@ -45,21 +42,20 @@ class Process: NSObject {
         self.task = taskClass.init()
         super.init()
         
-        // Setup termination notification
         NotificationCenter.default.addObserver(self, selector: #selector(taskDidTerminate(_:)), name: NSNotification.Name("NSTaskDidTerminateNotification"), object: task)
     }
     
     func run() throws {
         let selector = Selector(("launch"))
         if task.responds(to: selector) {
-            task.perform(selector)
+            _ = task.perform(selector)
         } else {
             throw YTDLPError.osNotSupported
         }
     }
     
     func terminate() {
-        task.perform(Selector(("terminate")))
+        _ = task.perform(Selector(("terminate")))
     }
     
     @objc private func taskDidTerminate(_ notification: Notification) {
