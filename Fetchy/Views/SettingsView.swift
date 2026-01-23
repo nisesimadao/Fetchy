@@ -5,9 +5,10 @@ struct SettingsView: View {
     
     var body: some View {
         NavigationView {
-            Form {
+            List {
                 Section(header: DotMatrixText(text: "HAPTICS")) {
                     Toggle("Vibration Feedback", isOn: $settings.vibrationEnabled)
+                        .listRowBackground(Color.white.opacity(0.05))
                     
                     if settings.vibrationEnabled {
                         Picker("Intensity", selection: $settings.vibrationStrength) {
@@ -15,6 +16,7 @@ struct SettingsView: View {
                             Text("Medium").tag("medium")
                             Text("Heavy").tag("heavy")
                         }
+                        .listRowBackground(Color.white.opacity(0.05))
                     }
                 }
                 
@@ -32,6 +34,7 @@ struct SettingsView: View {
                         }
                     }
                 }
+                .listRowBackground(Color.white.opacity(0.05))
                 
                 Section(header: DotMatrixText(text: "QUALITY")) {
                     Picker("Default Resolution", selection: $settings.defaultResolution) {
@@ -48,9 +51,10 @@ struct SettingsView: View {
                         Text("Lossless").tag("lossless")
                     }
                 }
+                .listRowBackground(Color.white.opacity(0.05))
                 
                 Section(header: DotMatrixText(text: "DIAGNOSTICS")) {
-                    NavigationLink(destination: DetailedLogView()) {
+                    NavigationLink(destination: DetailedLogView(targetEntryID: nil)) {
                         HStack {
                             Image(systemName: "terminal")
                                 .foregroundStyle(DesignSystem.Colors.nothingRed)
@@ -58,13 +62,23 @@ struct SettingsView: View {
                         }
                     }
                 }
+                .listRowBackground(Color.white.opacity(0.05))
                 
                 Section {
-                    Text("Version 1.0.0 (Build 1)")
+                    Text("Version 1.4.0 (Build 5)")
                         .font(.nothingMeta)
                         .foregroundStyle(.secondary)
                 }
+                .listRowBackground(Color.clear)
+                
+                // Extra space for floating bar
+                Color.clear
+                    .frame(height: 80)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.black.ignoresSafeArea())
             .navigationTitle("Settings")
         }
     }

@@ -25,11 +25,9 @@ struct DownloadView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(uiColor: .systemGroupedBackground)
-                    .ignoresSafeArea()
+                Color.black.ignoresSafeArea()
                 
                 VStack(spacing: 16) {
-                    
                     // Input Section
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
@@ -122,6 +120,7 @@ struct DownloadView: View {
                     .buttonStyle(IndustrialButtonStyle())
                     .disabled(urlInput.isEmpty || isDownloading)
                     .padding()
+                    .padding(.bottom, 90) // Base padding for floating bar
                 }
                 .padding(.top, 10)
             }
@@ -271,4 +270,3 @@ struct QuickLookView: UIViewControllerRepresentable {
         }
     }
 }
-

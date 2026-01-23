@@ -136,6 +136,7 @@ struct DetailedLogView: View {
                     
                     Text(selectedLog ?? "Log details are unavailable for this entry.")
                         .font(.system(size: 11, design: .monospaced))
+                        .textSelection(.enabled) // Allow user to copy logs
                         .padding(.bottom, 40)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }

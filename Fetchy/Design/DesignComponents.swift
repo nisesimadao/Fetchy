@@ -34,27 +34,29 @@ struct LiquidGlassModifier: ViewModifier {
     }
     
     func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content.glassEffect() // Native Liquid Logic
+        } else {
+            manualStack(content)
+        }
+    }
+    
+    @ViewBuilder
+    private func manualStack(_ content: Content) -> some View {
         content
             .background(
                 ZStack {
-                    // Optimized manual stack to prevent distortion on tall views
-                    // Fallback solid
                     if colorScheme == .dark {
                         Color.black.opacity(0.8)
                     } else {
                         Color.white.opacity(0.8)
                     }
 
-                    // A. Material & Blur
                     Rectangle()
                         .fill(colorScheme == .dark ? DesignSystem.Colors.glassDark : DesignSystem.Colors.glassLight)
                         .background(.ultraThinMaterial)
-                    
-                    // B. Refraction & Lens Thickness
-                    // Using an overlay stroke instead of inner geometry for better stability
                 }
             )
-            // B. Refraction highlight (Inner Border)
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .strokeBorder(
@@ -69,12 +71,10 @@ struct LiquidGlassModifier: ViewModifier {
                         lineWidth: 1
                     )
             )
-            // C. Specular Highlights
             .overlay(
                 contentHeightClippingSheen()
             )
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            // Outer Silhouette
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(colorScheme == .dark ? .white.opacity(0.1) : .black.opacity(0.05), lineWidth: 0.5)
