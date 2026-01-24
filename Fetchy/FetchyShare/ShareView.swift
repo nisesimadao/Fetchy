@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import Combine
 
 struct ShareView: View {
     var extensionContext: NSExtensionContext?
@@ -28,6 +29,10 @@ struct ShareView: View {
     @State private var toastMessage: String?
     @State private var isShowingToast = false
     @State private var showProgressOverride = false
+    @State private var cancellables = Set<AnyCancellable>()
+    @State private var activeTask: DownloadTask?
+    
+    @ObservedObject var downloadManager = DownloadManager.shared
     
     let videoResolutions = ["2160p", "1080p", "720p", "480p"]
     let videoFormats = ["mp4", "webm", "mkv"]
@@ -38,11 +43,8 @@ struct ShareView: View {
     
     var body: some View {
         ZStack {
-            Color(.systemBackground) // Support Light/Dark
+            Color(.systemBackground)
                 .ignoresSafeArea()
-                .onTapGesture {
-                    // Hide pickers or keyboard if any (though no keyboard in Extension usually)
-                }
             
             VStack(spacing: 20) {
                 if state == .initial {
@@ -62,7 +64,6 @@ struct ShareView: View {
             }
             .padding()
             
-            // Toast layer
             if isShowingToast, let msg = toastMessage {
                 VStack {
                     Spacer()
@@ -74,7 +75,6 @@ struct ShareView: View {
         }
         .onAppear {
             extractURL()
-            SettingsManager.shared.hapticFrequency = SettingsManager.shared.hapticFrequency // Sync
         }
     }
     
@@ -93,7 +93,6 @@ struct ShareView: View {
             }
             
             VStack(spacing: 16) {
-                // Mode Toggle
                 HStack(spacing: 12) {
                     selectionButton(title: "VIDEO", isActive: !isAudioOnly) {
                         withAnimation { isAudioOnly = false; selectedFormat = "mp4" }
@@ -103,7 +102,6 @@ struct ShareView: View {
                     }
                 }
                 
-                // Pickers
                 VStack(spacing: 12) {
                     if isAudioOnly {
                         miniPicker(title: "FORMAT", items: audioFormats, selection: $selectedFormat)
@@ -148,7 +146,6 @@ struct ShareView: View {
             
             if state == .downloading {
                 VStack(spacing: 16) {
-                    // Revealable Progress
                     if SettingsManager.shared.progressVisible || showProgressOverride {
                         VStack(spacing: 8) {
                             ProgressView(value: progress)
@@ -178,7 +175,6 @@ struct ShareView: View {
         .liquidGlass(cornerRadius: 24)
     }
     
-    // UI Helpers
     private func selectionButton(title: String, isActive: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
@@ -221,14 +217,13 @@ struct ShareView: View {
         case .initial: return "READY"
         case .downloading: return "SEQUENCE ACTIVE"
         case .readyForPreview: return "SIGNAL STABLE"
-        case .error: return "SYSTEM HALTED"
+        case .error(let msg): return msg
         case .success: return "COMPLETED"
         }
     }
     
     private func extractURL() {
         guard let items = extensionContext?.inputItems as? [NSExtensionItem] else { return }
-        
         for item in items {
             guard let attachments = item.attachments else { continue }
             for provider in attachments {
@@ -237,7 +232,6 @@ struct ShareView: View {
                         if let url = item as? URL {
                             DispatchQueue.main.async {
                                 self.foundURL = url
-                                self.videoTitle = "EXTRACTING METADATA..."
                                 self.videoTitle = url.host ?? "External Link"
                             }
                         }
@@ -263,83 +257,50 @@ struct ShareView: View {
             startTime = Date()
         }
         
-        YTDLPManager.shared.download(
-            url: url.absoluteString, 
+        downloadManager.addDownload(
+            url: url.absoluteString,
             quality: selectedResolution,
             audioOnly: isAudioOnly,
             format: selectedFormat,
-            bitrate: selectedBitrate,
-            statusHandler: { prog, status in
-            DispatchQueue.main.async {
-                if prog >= 0 {
+            bitrate: selectedBitrate
+        )
+        
+        if let task = downloadManager.tasks.last {
+            self.activeTask = task
+            task.$progress
+                .receive(on: DispatchQueue.main)
+                .sink { prog in
                     self.progress = prog
-                    checkHaptics(prog)
+                    self.checkHaptics(prog)
                 }
-                self.statusMessage = status
-                checkTimeWarnings()
-            }
-        }) { result, logs in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let fileURL):
-                    self.downloadedFileURL = fileURL
-                    self.state = .readyForPreview
-                    self.progress = 1.0
-                    
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
-                    
-                    let entry = VideoEntry(
-                        title: fileURL.lastPathComponent,
-                        url: url.absoluteString,
-                        service: url.host ?? "Unknown",
-                        status: .completed,
-                        localPath: fileURL.path
-                    )
-                    DatabaseManager.shared.insert(entry: entry, rawLog: logs)
-                    
-                    // Auto-open QuickLook
-                    openQuickLook(url: fileURL)
-                    
-                case .failure(let error):
-                    let errorMsg = error.localizedDescription
-                    self.showToast(errorMsg)
-                    self.state = .error(errorMsg)
-                    UINotificationFeedbackGenerator().notificationOccurred(.error)
-                    
-                    let entry = VideoEntry(
-                        title: "Failed: \(url.host ?? "Link")",
-                        url: url.absoluteString,
-                        service: url.host ?? "Unknown",
-                        status: .failed,
-                        localPath: nil
-                    )
-                    DatabaseManager.shared.insert(entry: entry, rawLog: logs ?? errorMsg)
+                .store(in: &cancellables)
+            
+            task.$status
+                .receive(on: DispatchQueue.main)
+                .sink { status in
+                    if status == "COMPLETED" {
+                        if let fileURL = task.fileURL {
+                            self.downloadedFileURL = fileURL
+                            self.state = .readyForPreview
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
+                            self.openQuickLook(url: fileURL)
+                        }
+                    } else if status.contains("ERROR") {
+                        self.state = .error(status)
+                        UINotificationFeedbackGenerator().notificationOccurred(.error)
+                    }
                 }
-            }
+                .store(in: &cancellables)
         }
     }
     
     private func checkHaptics(_ prog: Double) {
         let settings = SettingsManager.shared
         guard settings.vibrationEnabled else { return }
-        
-        let frequency = Double(settings.hapticFrequency) / 100.0 // e.g., 0.02
+        let frequency = Double(settings.hapticFrequency) / 100.0
         if prog >= lastHapticProgress + frequency {
             hapticGenerator.impactOccurred()
             lastHapticProgress = prog
-        }
-    }
-    
-    private func checkTimeWarnings() {
-        let settings = SettingsManager.shared
-        guard settings.toastEnabled else { return }
-        guard let start = startTime else { return }
-        let elapsed = Date().timeIntervalSince(start)
-        
-        // Use user defined delay for initial warning, then every 300s
-        let delay = Double(settings.toastDelaySeconds)
-        if elapsed > delay && elapsed < delay + 5 {
-            showToast("OSの制限により、長時間ダウンロードが中断される場合があります。")
         }
     }
     
