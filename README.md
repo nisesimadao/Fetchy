@@ -7,7 +7,7 @@
 A modern iOS video downloader powered by a Node.js backend and `yt-dlp`.
 
 Fetchy provides a seamless video downloading experience by offloading all heavy processing to a server, keeping the iOS app lightweight, fast, and battery-efficient.
-
+[日本語Readmeはこちら](README-jp.md)
 ## 🖼️ Screenshots
 
 <img width="195" alt="Shared Extension Download Screen" src="https://github.com/user-attachments/assets/91a0d835-5c03-4bfd-89ca-1e6bf27692b4" />
