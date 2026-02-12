@@ -178,4 +178,4 @@ Pull Request・Issue 大歓迎です！
 
 ## 📄 ライセンス
 
-MIT License
+[MIT License](LICENSE)
