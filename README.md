@@ -10,6 +10,8 @@ Fetchy provides a seamless video downloading experience by offloading
 all heavy processing to a server, keeping the iOS app lightweight, fast,
 and battery-efficient.
 
+*Support iOS 15.6+*
+
 [👉 日本語Readmeはこっち](README-jp.md)
 
 ------------------------------------------------------------------------
