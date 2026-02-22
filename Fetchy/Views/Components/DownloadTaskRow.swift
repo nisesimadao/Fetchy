@@ -21,12 +21,24 @@ struct DownloadTaskRow: View {
                 
                 Text(task.status)
                     .font(.nothingMeta)
-                    .foregroundStyle(task.status == "COMPLETED" ? DesignSystem.Colors.nothingRed : .secondary)
+                    .if(availableiOS: 15.0, then: { 
+                        if #available(iOS 15.0, *) {
+                            $0.foregroundStyle(task.status == "COMPLETED" ? DesignSystem.Colors.nothingRed : .secondary)
+                        } else {
+                            $0
+                        }
+                    }, otherwise: { $0.foregroundColor(task.status == "COMPLETED" ? DesignSystem.Colors.nothingRed : .secondary) })
             }
             
             VStack(spacing: 6) {
                 ProgressView(value: task.progress)
-                    .tint(DesignSystem.Colors.nothingRed)
+                    .if(availableiOS: 15.0, then: { 
+                        if #available(iOS 15.0, *) {
+                            $0.tint(DesignSystem.Colors.nothingRed)
+                        } else {
+                            $0
+                        }
+                    }, otherwise: { $0.accentColor(DesignSystem.Colors.nothingRed) })
                     .scaleEffect(x: 1, y: 1.2)
                 
                 HStack {
@@ -51,7 +63,13 @@ struct DownloadTaskRow: View {
         .liquidGlass(cornerRadius: 16)
         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
         .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
+        .if(availableiOS: 15.0) {
+            if #available(iOS 15.0, *) {
+                $0.listRowSeparator(.hidden)
+            } else {
+                $0
+            }
+        }
     }
 }
 

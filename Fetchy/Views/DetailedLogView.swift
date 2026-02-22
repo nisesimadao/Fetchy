@@ -29,8 +29,15 @@ struct DetailedLogView: View {
                     Text("STATUS")
                         .frame(width: 80, alignment: .trailing)
                 }
-                .font(.nothingMeta)
-                .foregroundStyle(.secondary)
+                .if(availableiOS: 15.0) {
+                    if #available(iOS 15.0, *) {
+                        $0.foregroundStyle(.secondary)
+                    } else {
+                        $0
+                    }
+                } otherwise: {
+                    $0.foregroundColor(.secondary)
+                }
                 .padding(.horizontal)
                 .padding(.vertical, 8)
                 .background(Color(.secondarySystemGroupedBackground))
@@ -45,22 +52,54 @@ struct DetailedLogView: View {
                                     HStack(alignment: .top) {
                                         Text(formatDate(entry.date))
                                             .font(.nothingMeta)
-                                            .foregroundStyle(.secondary)
+                                            .if(availableiOS: 15.0) {
+                                                if #available(iOS 15.0, *) {
+                                                    $0.foregroundStyle(.secondary)
+                                                } else {
+                                                    $0
+                                                }
+                                            } otherwise: {
+                                                $0.foregroundColor(.secondary)
+                                            }
                                             .frame(width: 80, alignment: .leading)
                                         
                                         VStack(alignment: .leading, spacing: 4) {
                                             Text(entry.id.uuidString.prefix(8).uppercased())
                                                 .font(.system(size: 9, design: .monospaced))
-                                                .foregroundStyle(DesignSystem.Colors.nothingRed)
+                                                .if(availableiOS: 15.0) {
+                                                    if #available(iOS 15.0, *) {
+                                                        $0.foregroundStyle(DesignSystem.Colors.nothingRed)
+                                                    } else {
+                                                        $0
+                                                    }
+                                                } otherwise: {
+                                                    $0.foregroundColor(DesignSystem.Colors.nothingRed)
+                                                }
                                             
                                             Text(entry.title)
                                                 .font(.nothingBody)
                                                 .lineLimit(1)
-                                                .foregroundStyle(.primary)
+                                                .if(availableiOS: 15.0) {
+                                                    if #available(iOS 15.0, *) {
+                                                        $0.foregroundStyle(.primary)
+                                                    } else {
+                                                        $0
+                                                    }
+                                                } otherwise: {
+                                                    $0.foregroundColor(.primary)
+                                                }
                                             
                                             Text(entry.url)
                                                 .font(.system(size: 8, design: .monospaced))
-                                                .foregroundStyle(.secondary)
+                                                .if(availableiOS: 15.0) {
+                                                    if #available(iOS 15.0, *) {
+                                                        $0.foregroundStyle(.secondary)
+                                                    } else {
+                                                        $0
+                                                    }
+                                                } otherwise: {
+                                                    $0.foregroundColor(.secondary)
+                                                }
                                                 .lineLimit(1)
                                         }
                                         
@@ -68,7 +107,15 @@ struct DetailedLogView: View {
                                         
                                         Text(entry.status.rawValue.uppercased())
                                             .font(.nothingMeta)
-                                            .foregroundStyle(statusColor(entry.status))
+                                            .if(availableiOS: 15.0) {
+                                                if #available(iOS 15.0, *) {
+                                                    $0.foregroundStyle(statusColor(entry.status))
+                                                } else {
+                                                    $0
+                                                }
+                                            } otherwise: {
+                                                $0.foregroundColor(statusColor(entry.status))
+                                            }
                                             .frame(width: 80, alignment: .trailing)
                                     }
                                     .padding(.vertical, 12)

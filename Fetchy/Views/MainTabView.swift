@@ -40,7 +40,15 @@ struct MainTabView: View {
             if splashActive {
                 ZStack {
                     Rectangle()
-                        .fill(.ultraThinMaterial)
+                        .if(availableiOS: 15.0) {
+                            if #available(iOS 15.0, *) {
+                                $0.fill(.ultraThinMaterial)
+                            } else {
+                                $0.fill(Color.black.opacity(0.4))
+                            }
+                        } otherwise: {
+                            $0.fill(Color.black.opacity(0.4))
+                        }
                         .ignoresSafeArea()
                     
                     SplashVideoView(videoName: "Splash.mov", isActive: $splashActive)
@@ -50,7 +58,15 @@ struct MainTabView: View {
                 .zIndex(1)
             }
         }
-        .animation(.easeInOut(duration: 0.8), value: splashActive)
+        .if(availableiOS: 15.0) {
+            if #available(iOS 15.0, *) {
+                $0.animation(.easeInOut(duration: 0.8), value: splashActive)
+            } else {
+                $0
+            }
+        } otherwise: {
+            $0.animation(.easeInOut(duration: 0.8))
+        }
     }
 }
 

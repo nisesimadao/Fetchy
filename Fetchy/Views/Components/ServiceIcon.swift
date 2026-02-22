@@ -21,7 +21,7 @@ struct ServiceIcon: View {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: size * 0.5, height: size * 0.5)
-                .foregroundStyle(.white) // White symbols on colored backgrounds
+                .foregroundColor(.white) // White symbols on colored backgrounds
         }
     }
     

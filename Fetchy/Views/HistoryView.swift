@@ -24,7 +24,15 @@ struct HistoryView: View {
                         VStack(spacing: 20) {
                             Image(systemName: "tray.fill")
                                 .font(.system(size: 44))
-                                .foregroundStyle(.quaternary)
+                                .if(availableiOS: 15.0) {
+                                    if #available(iOS 15.0, *) {
+                                        $0.foregroundStyle(.quaternary)
+                                    } else {
+                                        $0
+                                    }
+                                } otherwise: {
+                                    $0.foregroundColor(Color.secondary.opacity(0.3))
+                                }
                             DotMatrixText(text: "NO RECORDS FOUND", usesUppercase: true)
                         }
                         .frame(maxWidth: .infinity)
@@ -35,13 +43,11 @@ struct HistoryView: View {
                     Section(header: DotMatrixText(text: "RECENT SEQUENCES")) {
                         ForEach(entries) { entry in
                             HistoryRow(entry: entry, onDelete: { deleteEntry(entry) }, onShowLog: { showingLogEntry = entry })
-                                .swipeActions(edge: .trailing) {
-                                    Button(role: .destructive) {
-                                        deleteEntry(entry)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                }
+                        }
+                        .onDelete { indexSet in
+                            indexSet.forEach { index in
+                                deleteEntry(entries[index])
+                            }
                         }
                         
                         if entries.count >= limit && entries.count % limit == 0 {
@@ -65,13 +71,6 @@ struct HistoryView: View {
                     Image(systemName: "trash")
                         .foregroundColor(DesignSystem.Colors.nothingRed)
                 }
-            }
-            ToolbarItem(placement: .principal) {
-                Text("History")
-                    .font(.system(size: 17, weight: .semibold))
-                    .onTapGesture {
-                        handleTitleTap()
-                    }
             }
         }
         .sheet(item: $showingLogEntry) { entry in
@@ -218,7 +217,15 @@ struct HistoryRow: View {
                     
                     Text(entry.url)
                         .font(.nothingMeta)
-                        .foregroundStyle(.secondary)
+                        .if(availableiOS: 15.0) {
+                            if #available(iOS 15.0, *) {
+                                $0.foregroundStyle(.secondary)
+                            } else {
+                                $0
+                            }
+                        } otherwise: {
+                            $0.foregroundColor(.secondary)
+                        }
                         .lineLimit(1)
                         .animation(nil, value: isExpanded)
                 }
@@ -231,13 +238,29 @@ struct HistoryRow: View {
                     
                     Text(formatDate(entry.date))
                         .font(.nothingMeta)
-                        .foregroundStyle(.secondary)
+                        .if(availableiOS: 15.0) {
+                            if #available(iOS 15.0, *) {
+                                $0.foregroundStyle(.secondary)
+                            } else {
+                                $0
+                            }
+                        } otherwise: {
+                            $0.foregroundColor(.secondary)
+                        }
                         .animation(nil, value: isExpanded)
                     
                     // Expansion Indicator
                     Image(systemName: "chevron.down")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.tertiary)
+                        .if(availableiOS: 15.0) {
+                            if #available(iOS 15.0, *) {
+                                $0.foregroundStyle(.tertiary)
+                            } else {
+                                $0
+                            }
+                        } otherwise: {
+                            $0.foregroundColor(Color.secondary.opacity(0.5))
+                        }
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
                         .animation(nil, value: isExpanded)
                 }
@@ -266,12 +289,12 @@ struct HistoryRow: View {
                     HStack(alignment: .top) {
                         Image(systemName: "text.alignleft")
                             .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(.secondary)
                             .padding(.top, 4)
                         
                         Text(entry.rawLog ?? "No log data available")
                             .font(.system(size: 12, design: .monospaced))
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(.secondary)
                             .lineLimit(2)
                     }
                     .padding(.vertical, 4)
@@ -342,22 +365,62 @@ struct StatusIndicator: View {
             switch status {
             case .completed:
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(DesignSystem.Colors.nothingRed)
+                    .if(availableiOS: 15.0) {
+                        if #available(iOS 15.0, *) {
+                            $0.foregroundStyle(DesignSystem.Colors.nothingRed)
+                        } else {
+                            $0
+                        }
+                    } otherwise: {
+                        $0.foregroundColor(DesignSystem.Colors.nothingRed)
+                    }
             case .failed:
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.secondary)
+                    .if(availableiOS: 15.0) {
+                        if #available(iOS 15.0, *) {
+                            $0.foregroundStyle(.secondary)
+                        } else {
+                            $0
+                        }
+                    } otherwise: {
+                        $0.foregroundColor(.secondary)
+                    }
             case .downloading:
                 ProgressView()
                     .scaleEffect(0.8)
             case .pending:
                 Image(systemName: "clock")
-                    .foregroundStyle(.secondary)
+                    .if(availableiOS: 15.0) {
+                        if #available(iOS 15.0, *) {
+                            $0.foregroundStyle(.secondary)
+                        } else {
+                            $0
+                        }
+                    } otherwise: {
+                        $0.foregroundColor(.secondary)
+                    }
             case .cancelled:
                 Image(systemName: "stop.circle")
-                    .foregroundStyle(.secondary)
+                    .if(availableiOS: 15.0) {
+                        if #available(iOS 15.0, *) {
+                            $0.foregroundStyle(.secondary)
+                        } else {
+                            $0
+                        }
+                    } otherwise: {
+                        $0.foregroundColor(.secondary)
+                    }
             case .aborted:
                 Image(systemName: "xmark.circle")
-                    .foregroundStyle(.secondary)
+                    .if(availableiOS: 15.0) {
+                        if #available(iOS 15.0, *) {
+                            $0.foregroundStyle(.secondary)
+                        } else {
+                            $0
+                        }
+                    } otherwise: {
+                        $0.foregroundColor(.secondary)
+                    }
             }
         }
     }

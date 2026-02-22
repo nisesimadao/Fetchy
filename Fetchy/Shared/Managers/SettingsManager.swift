@@ -70,6 +70,10 @@ class SettingsManager: ObservableObject {
         didSet { save("embedChapters", value: embedChapters) }
     }
     
+    @Published var backendURL: String = "https://fetchy-api.onrender.com" {
+        didSet { save("backendURL", value: backendURL) }
+    }
+    
     private init() {
         self.vibrationEnabled = store?.bool(forKey: "vibrationEnabled") ?? true
         self.vibrationStrength = store?.string(forKey: "vibrationStrength") ?? "light"
@@ -86,6 +90,9 @@ class SettingsManager: ObservableObject {
         self.removeSponsors = store?.bool(forKey: "removeSponsors") ?? false
         self.embedSubtitles = store?.bool(forKey: "embedSubtitles") ?? false
         self.embedChapters = store?.bool(forKey: "embedChapters") ?? false
+        
+        // Initialize new backendURL
+        self.backendURL = store?.string(forKey: "backendURL") ?? "https://fetchy-api--vistaope.replit.app"
     }
     
     private func save(_ key: String, value: Any) {

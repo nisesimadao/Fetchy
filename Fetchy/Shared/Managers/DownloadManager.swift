@@ -131,7 +131,6 @@ class DownloadTask: ObservableObject, Identifiable {
     }
 
     func cancel() {
-        ytdlpManager.cancel()
         self.status = "CANCELLED"
         // Cleanup happens in ShareViewController dismissal
     }

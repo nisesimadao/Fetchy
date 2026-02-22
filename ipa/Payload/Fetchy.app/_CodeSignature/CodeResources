@@ -14,15 +14,19 @@
 		</data>
 		<key>Assets.car</key>
 		<data>
-		YXahohsFtGkSKubqnQAvIde95Hw=
+		11phk6UPA85vXPj9Pyhb/Pm2V38=
 		</data>
 		<key>Fetchy.debug.dylib</key>
 		<data>
-		6nbhi0HqrsJ3GZwInortxQ+YWvA=
+		IrN4uhnTNM2Yw0sB1XAj8+HqLQM=
+		</data>
+		<key>Frameworks/libswift_Concurrency.dylib</key>
+		<data>
+		bfPdazTKCReB5cq8M8l9wzMzdZo=
 		</data>
 		<key>Info.plist</key>
 		<data>
-		xcvKk+qMnIVRKv/4uCj7YFNaAfU=
+		mAIT5Ys0dhNXnnXVsPo2MSQofME=
 		</data>
 		<key>PkgInfo</key>
 		<data>
@@ -30,27 +34,27 @@
 		</data>
 		<key>PlugIns/FetchyShare.appex/FetchyShare</key>
 		<data>
-		WBvvLni8f0PgYxM8zw5i+OFPxj8=
+		y4hggKH8GEqUIqBYGC7lO/t+vws=
 		</data>
 		<key>PlugIns/FetchyShare.appex/FetchyShare.debug.dylib</key>
 		<data>
-		fhlNQBXZMkd7Aj7n3MRcnSZLoKY=
+		ywV2U16m6tJ5EdnAwD2k2NG+VMY=
 		</data>
 		<key>PlugIns/FetchyShare.appex/Info.plist</key>
 		<data>
-		xepLUKoZRMF4gWpW6sQ1X9QF69w=
+		RUlFPyAqkEZlM3KD2VGPw9sFeB8=
 		</data>
 		<key>PlugIns/FetchyShare.appex/_CodeSignature/CodeResources</key>
 		<data>
-		nC7FABAr3uJUTcynz6gnwVDoXl8=
+		6hS80g75k9fKyKQ1WqkjZ2MAjlY=
 		</data>
 		<key>PlugIns/FetchyShare.appex/__preview.dylib</key>
 		<data>
-		qUiOwrE301KOL76WywZwnAQTq64=
+		0CLqoLBIkPlX4J3On/XS5MVHCv8=
 		</data>
 		<key>PlugIns/FetchyShare.appex/embedded.mobileprovision</key>
 		<data>
-		ulxjsaToi6EgLxKltdHqdyflRw4=
+		Iw82L6+QCD6NM+u0djb9WcY9ByE=
 		</data>
 		<key>Splash.mov</key>
 		<data>
@@ -58,7 +62,7 @@
 		</data>
 		<key>__preview.dylib</key>
 		<data>
-		xzaDyHBwaSJcHaaRU7exhNNJFMU=
+		WEwe7Tjzr1FMhjRfCY8HThCE3+o=
 		</data>
 		<key>darkicon.png</key>
 		<data>
@@ -70,7 +74,7 @@
 		</data>
 		<key>embedded.mobileprovision</key>
 		<data>
-		NpSxQ6p6K1zzUtFajLRPqCspocg=
+		m/2e9TWHEjLMHgNVoWSVlqgyTeo=
 		</data>
 		<key>tinticon.png</key>
 		<data>
@@ -97,56 +101,63 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			eXDwliIeDR63R9UEtRRxhvOvUnikuJdHUg3m83umqI0=
+			yUQHgt5m6fK8iz54e8rTYh1yFbcLr8123DOq8tj/e8M=
 			</data>
 		</dict>
 		<key>Fetchy.debug.dylib</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			/GGmSs+tA3yYqItptN3n+CtHMDXGqSrIvcbeiVilZls=
+			IpGKZ6QV9zLv8ZlboTS4qhf/Gqwi527FBHRXjqWOx60=
+			</data>
+		</dict>
+		<key>Frameworks/libswift_Concurrency.dylib</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			wvjhWuyQzv/ESifz1w1vUpWuCaJ0lGEYEEF6O/6i4Ts=
 			</data>
 		</dict>
 		<key>PlugIns/FetchyShare.appex/FetchyShare</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			dEZVeqqNI6nDNdE9jOMPG4HEEhCzu0O3YkQh47Assgk=
+			Yh8gaYTqVUc2Ts+tyasAm91lje96dWMMaRJSnao3Km0=
 			</data>
 		</dict>
 		<key>PlugIns/FetchyShare.appex/FetchyShare.debug.dylib</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			taLL/IE2IrMrccyQztgVlOAxIRTDciOqkNwEcH4a9bQ=
+			L34ORdwMY/VjNpIV5JxGxDIN/9XFBiTR2W/Wn9hRHiU=
 			</data>
 		</dict>
 		<key>PlugIns/FetchyShare.appex/Info.plist</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			+O3UbbNryJ82yEEaJF966Z9LC862c+Zt64x1NNdY5CY=
+			pZTZJlQNZIUwl5kVQripwSuymMFsUhn/vRpHkNDWbJ4=
 			</data>
 		</dict>
 		<key>PlugIns/FetchyShare.appex/_CodeSignature/CodeResources</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			JiQ2IGBadoF3Q8wTmJxGWaTPZSL6akCwaaJYZoDTcgo=
+			GrEp2XyVCq3iD1YbAD0uptpo7fkirQrusGJo6L5WJ0I=
 			</data>
 		</dict>
 		<key>PlugIns/FetchyShare.appex/__preview.dylib</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			HNU8/0ZJRK/o1Qh81y6wXYxH4YsEV4w3Opcx80u0Rj8=
+			gOGm8DAJR4DbBWDt4fasM1IRlJ3GSSUx2FTB5csRp2s=
 			</data>
 		</dict>
 		<key>PlugIns/FetchyShare.appex/embedded.mobileprovision</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			slFqdo+Y9ElWaH4jTKuwUH8S6B76I5wXz5pmD9HxdFo=
+			uS9ZeVtNVltQ5ULC5sN1S1Xe6yy615Z4QXY/3APmRxw=
 			</data>
 		</dict>
 		<key>Splash.mov</key>
@@ -160,7 +171,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			Fv1JHn9nrTUvbGUgaQeRCt1OrblYi4gCFyCyOXCULKU=
+			PnyVsixYUc7hREwHA6tE3qNhfJRztb5Q5lb7c93++8s=
 			</data>
 		</dict>
 		<key>darkicon.png</key>
@@ -181,7 +192,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			yvMWyZ4wAw9jhXzOfi5+NR9IJhbRYj85mOrth8gtiKY=
+			IB3ODyJyqZHv6J8vQaGT2oAyt1NPCHzfoaqZp9rrDXQ=
 			</data>
 		</dict>
 		<key>tinticon.png</key>

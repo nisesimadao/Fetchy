@@ -18,7 +18,7 @@ enum YTDLPError: LocalizedError {
 }
 
 class YTDLPManager {
-    private var pollingTask: Task<Void, Error>?
+    // private var pollingTask: Task<Void, Error>? // Removed as no longer used
     private let apiClient = APIClient()
     
     // Info.plistからApp Group IDを取得。なければ従来値にフォールバック
@@ -46,16 +46,12 @@ class YTDLPManager {
                   statusHandler: @escaping (Double, String, String?, String?) -> Void,
                   completion: @escaping (Result<URL, Error>, String?) -> Void) {
         
-        pollingTask = Task {
-            do {
-                // Start download job
-                let jobId = try await apiClient.startDownload(url: url, quality: quality, audioOnly: audioOnly, format: format, bitrate: bitrate, embedMetadata: embedMetadata, embedThumbnail: embedThumbnail, removeSponsors: removeSponsors, embedSubtitles: embedSubtitles, embedChapters: embedChapters)
+        apiClient.startDownload(url: url, quality: quality, audioOnly: audioOnly, format: format, bitrate: bitrate, embedMetadata: embedMetadata, embedThumbnail: embedThumbnail, removeSponsors: removeSponsors, embedSubtitles: embedSubtitles, embedChapters: embedChapters) { result in
+            switch result {
+            case .success(let jobId):
                 print("[API] Job started: \(jobId)")
-                
-                // Poll for status
-                try await pollStatus(jobId: jobId, outputTemplate: outputTemplate, statusHandler: statusHandler, completion: completion)
-                
-            } catch {
+                self.pollStatus(jobId: jobId, outputTemplate: outputTemplate, statusHandler: statusHandler, completion: completion)
+            case .failure(let error):
                 print("[API] Error starting download: \(error)")
                 completion(.failure(error), nil)
             }
@@ -66,16 +62,24 @@ class YTDLPManager {
     private func pollStatus(jobId: String,
                            outputTemplate: String?,
                            statusHandler: @escaping (Double, String, String?, String?) -> Void,
-                           completion: @escaping (Result<URL, Error>, String?) -> Void) async throws {
+                           completion: @escaping (Result<URL, Error>, String?) -> Void,
+                           attempts: Int = 0) { // Add attempts parameter for recursive calls
         
-        print("[YTDLP] Starting poll for \(jobId)")
-        var attempts = 0
         let maxAttempts = 600 // 5 minutes with 0.5s intervals
         
-        while attempts < maxAttempts {
-            do {
-                let status = try await apiClient.getStatus(jobId: jobId)
-                
+        guard attempts < maxAttempts else {
+            apiClient.getLog(jobId: jobId) { logResult in
+                let log = try? logResult.get()
+                completion(.failure(YTDLPError.timeout), log)
+            }
+            return
+        }
+        
+        apiClient.getStatus(jobId: jobId) { [weak self] result in
+            guard let self = self else { return }
+            
+            switch result {
+            case .success(let status):
                 // Update progress
                 statusHandler(status.progress, status.message, status.extractor, status.title)
                 
@@ -90,7 +94,7 @@ class YTDLPManager {
                         destinationURL = URL(fileURLWithPath: template)
                     } else {
                         // Fallback logic (legacy)
-                        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
+                        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: self.appGroupIdentifier) else {
                             completion(.failure(YTDLPError.apiError("Could not access App Group")), nil)
                             return
                         }
@@ -105,42 +109,50 @@ class YTDLPManager {
                         try? FileManager.default.removeItem(at: destinationURL)
                     }
                     
-                    try await apiClient.downloadFile(jobId: jobId, to: destinationURL) { progress in
+                    self.apiClient.downloadFile(jobId: jobId, to: destinationURL) { progress in
                         statusHandler(progress, "DOWNLOADING FILE...", status.extractor, status.title)
+                    } completion: { downloadResult in
+                        switch downloadResult {
+                        case .success:
+                            self.apiClient.getLog(jobId: jobId) { logResult in
+                                let log = try? logResult.get()
+                                completion(.success(destinationURL), log)
+                            }
+                        case .failure(let error):
+                            self.apiClient.getLog(jobId: jobId) { logResult in
+                                let log = try? logResult.get()
+                                completion(.failure(error), log)
+                            }
+                        }
                     }
-                    let log = try? await apiClient.getLog(jobId: jobId)
-                    completion(.success(destinationURL), log)
-                    return
                     
                 case "failed":
-                    let log = try? await apiClient.getLog(jobId: jobId)
-                    completion(.failure(YTDLPError.apiError(status.message)), log)
-                    return
+                    self.apiClient.getLog(jobId: jobId) { logResult in
+                        let log = try? logResult.get()
+                        completion(.failure(YTDLPError.apiError(status.message)), log)
+                    }
                     
                 default:
                     // Continue polling
-                    try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second
-                    attempts += 1
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self.pollStatus(jobId: jobId, outputTemplate: outputTemplate, statusHandler: statusHandler, completion: completion, attempts: attempts + 1)
+                    }
                 }
                 
-            } catch {
-                if error is CancellationError {
-                    print("[YTDLP] Task cancelled.")
-                    completion(.failure(error), nil)
-                    return
+            case .failure(let error):
+                if let apiError = error as? APIError, case .networkError(_) = apiError {
+                    // Network error, potentially transient, retry polling
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self.pollStatus(jobId: jobId, outputTemplate: outputTemplate, statusHandler: statusHandler, completion: completion, attempts: attempts + 1)
+                    }
+                } else {
+                    // Other API errors are considered fatal for this poll cycle
+                    self.apiClient.getLog(jobId: jobId) { logResult in
+                        let log = try? logResult.get()
+                        completion(.failure(error), log)
+                    }
                 }
-                print("[API] Polling error: \(error)")
-                let log = try? await apiClient.getLog(jobId: jobId)
-                completion(.failure(error), log)
-                return
             }
         }
-        
-        let log = try? await apiClient.getLog(jobId: jobId)
-        completion(.failure(YTDLPError.timeout), log)
-    }
-    
-    func cancel() {
-        pollingTask?.cancel()
     }
 }

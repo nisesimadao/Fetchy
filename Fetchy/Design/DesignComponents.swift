@@ -55,7 +55,13 @@ struct LiquidGlassModifier: ViewModifier {
                     // Optimized Material Layer
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .fill(DesignSystem.Colors.glass(for: colorScheme))
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                        .if(availableiOS: 15.0) {
+                            if #available(iOS 15.0, *) {
+                                $0.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                            } else {
+                                $0
+                            }
+                        }
                     
                     // Refraction Highlight (Inner border)
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -100,7 +106,15 @@ struct DotMatrixText: View {
         Text(usesUppercase ? text.uppercased() : text)
             .font(.nothingMeta)
             .kerning(0.5) // Reduced kerning
-            .foregroundStyle(.secondary)
+            .if(availableiOS: 15.0) {
+                if #available(iOS 15.0, *) {
+                    $0.foregroundStyle(.secondary)
+                } else {
+                    $0
+                }
+            } otherwise: {
+                $0.foregroundColor(.secondary)
+            }
     }
 }
 
@@ -122,7 +136,11 @@ struct IndustrialButtonStyle: ButtonStyle {
             )
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .opacity(configuration.isPressed ? 0.9 : 1.0)
-            .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.7), value: configuration.isPressed)
+            .if(availableiOS: 15.0) {
+                $0.animation(.interactiveSpring(response: 0.2, dampingFraction: 0.7), value: configuration.isPressed)
+            } otherwise: {
+                $0.animation(.interactiveSpring(response: 0.2, dampingFraction: 0.7))
+            }
     }
 }
 
@@ -145,12 +163,70 @@ struct ToastView: View {
         .padding(.vertical, 12)
         .background(
             Capsule()
-                .fill(.thinMaterial)
+                .if(availableiOS: 15.0) {
+                    if #available(iOS 15.0, *) {
+                        $0.fill(.thinMaterial)
+                    } else {
+                        $0
+                    }
+                } otherwise: {
+                    $0.fill(colorScheme == .dark ? Color.black.opacity(0.8) : Color.white.opacity(0.8))
+                }
                 .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
         )
         .overlay(
             Capsule()
                 .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
         )
+    }
+}
+
+// MARK: - Helper Extensions for iOS 14
+extension View {
+    @ViewBuilder
+    func `if`<Content: View>(_ condition: Bool, @ViewBuilder transform: (Self) -> Content) -> some View {
+        if condition {
+            transform(self)
+        } else {
+            self
+        }
+    }
+    
+    @ViewBuilder
+    func `if`<TrueContent: View, FalseContent: View>(
+        _ condition: Bool,
+        @ViewBuilder then trueTransform: (Self) -> TrueContent,
+        @ViewBuilder otherwise falseTransform: (Self) -> FalseContent
+    ) -> some View {
+        if condition {
+            trueTransform(self)
+        } else {
+            falseTransform(self)
+        }
+    }
+
+    @ViewBuilder
+    func `if`<TrueContent: View>(
+        availableiOS version: Double,
+        @ViewBuilder then trueTransform: (Self) -> TrueContent
+    ) -> some View {
+        if #available(iOS 15.0, *) {
+             trueTransform(self)
+        } else {
+             self
+        }
+    }
+
+    @ViewBuilder
+    func `if`<TrueContent: View, FalseContent: View>(
+        availableiOS version: Double,
+        @ViewBuilder then trueTransform: (Self) -> TrueContent,
+        @ViewBuilder otherwise falseTransform: (Self) -> FalseContent
+    ) -> some View {
+        if #available(iOS 15.0, *) {
+             trueTransform(self)
+        } else {
+             falseTransform(self)
+        }
     }
 }

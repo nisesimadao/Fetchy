@@ -2,15 +2,27 @@ import UIKit
 import SwiftUI
 import Social
 import QuickLook
+import AVKit
+
+// Custom AVPlayerViewController to detect dismissal for cleanup
+class SharePlayerViewController: AVPlayerViewController {
+    var onDismiss: (() -> Void)?
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        if isBeingDismissed || isMovingFromParent {
+            onDismiss?()
+        }
+    }
+}
 
 class ShareViewController: UIViewController, QLPreviewControllerDataSource, QLPreviewControllerDelegate {
 
-    private var downloadedURL: URL?
-    private var viewModel: ShareViewModel! // Retain ViewModel
+    private var originalDownloadedURL: URL?
+    private var temporaryPlaybackURL: URL? // For the AVPlayer fallback
+    private var viewModel: ShareViewModel!
 
     override func loadView() {
         super.loadView()
-        // Manually create the view since we are not using Storyboard
         self.view = UIView(frame: UIScreen.main.bounds)
         self.view.backgroundColor = .clear
     }
@@ -18,25 +30,18 @@ class ShareViewController: UIViewController, QLPreviewControllerDataSource, QLPr
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // Initialize ViewModel via parent controller
         self.viewModel = ShareViewModel(extensionContext: self.extensionContext)
         
-        // Setup SwiftUI with hosting controller
         let shareView = ShareView(viewModel: self.viewModel)
         let hostingController = UIHostingController(rootView: shareView)
         
-        // Ensure the main view is transparent to show the hosting controller content correctly
         view.backgroundColor = .clear
         
-        // Proper child view controller lifecycle
         addChild(hostingController)
-        hostingController.view.backgroundColor = .clear // Prevent flashes
+        hostingController.view.backgroundColor = .clear
         view.addSubview(hostingController.view)
         
-        // Fallback for resizing
-        hostingController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
-        
         NSLayoutConstraint.activate([
             hostingController.view.topAnchor.constraint(equalTo: view.topAnchor),
             hostingController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -46,42 +51,102 @@ class ShareViewController: UIViewController, QLPreviewControllerDataSource, QLPr
         
         hostingController.didMove(toParent: self)
         
-        // Force layout pass
         view.layoutIfNeeded()
         
-        // Listen for QuickLook request
         NotificationCenter.default.addObserver(self, selector: #selector(handleQuickLookRequest(_:)), name: NSNotification.Name("OpenQuickLook"), object: nil)
     }
     
     @objc func handleQuickLookRequest(_ notification: Notification) {
-        if let url = notification.object as? URL {
-            self.downloadedURL = url
+        guard let url = notification.object as? URL else { return }
+        self.originalDownloadedURL = url
+        
+        if #available(iOS 16.0, *) {
+            // Use QLPreviewController on iOS 16+
             let qlVC = QLPreviewController()
             qlVC.dataSource = self
-            qlVC.delegate = self // Set delegate for cleanup
+            qlVC.delegate = self
             self.present(qlVC, animated: true, completion: nil)
+        } else {
+            // Use AVPlayerViewController on iOS 15 and below
+            prepareAndShowAVPlayer(for: url)
         }
     }
     
-    // MARK: - QLPreviewControllerDataSource
+    private func prepareAndShowAVPlayer(for originalURL: URL) {
+        // 1. Create a temporary copy for stable playback
+        guard let tempURL = createTemporaryCopy(of: originalURL) else {
+            cleanUpSession() // Cleanup if copy fails
+            return
+        }
+        self.temporaryPlaybackURL = tempURL
+        
+        // 2. Set up the player with the temporary URL
+        let playerVC = SharePlayerViewController()
+        playerVC.player = AVPlayer(url: tempURL)
+        playerVC.onDismiss = { [weak self] in
+            self?.cleanUpSession()
+        }
+        
+        // 3. Add a share button
+        let shareButton = UIBarButtonItem(barButtonSystemItem: .action, target: self, action: #selector(shareTapped))
+        playerVC.navigationItem.rightBarButtonItem = shareButton
+        
+        // 4. Wrap in a Navigation Controller and present
+        let navController = UINavigationController(rootViewController: playerVC)
+        navController.modalPresentationStyle = .fullScreen
+        self.present(navController, animated: true) {
+            playerVC.player?.play()
+        }
+    }
+    
+    private func createTemporaryCopy(of originalURL: URL) -> URL? {
+        // App Group file access is not needed if the file is already in the share extension's sandbox
+        do {
+            let videoData = try Data(contentsOf: originalURL)
+            let tempDir = FileManager.default.temporaryDirectory
+            let fileName = UUID().uuidString + "." + originalURL.pathExtension
+            let tempURL = tempDir.appendingPathComponent(fileName)
+            try videoData.write(to: tempURL)
+            return tempURL
+        } catch {
+            print("[Share] Error creating temp copy: \(error)")
+            return nil
+        }
+    }
+    
+    @objc private func shareTapped() {
+        guard let urlToShare = self.originalDownloadedURL else { return }
+        let activityVC = UIActivityViewController(activityItems: [urlToShare], applicationActivities: nil)
+        if let popover = activityVC.popoverPresentationController {
+            popover.sourceView = self.view
+            popover.barButtonItem = (self.presentedViewController as? UINavigationController)?.topViewController?.navigationItem.rightBarButtonItem
+        }
+        self.presentedViewController?.present(activityVC, animated: true)
+    }
+    
+    // MARK: - QLPreviewControllerDataSource (for iOS 16+)
     func numberOfPreviewItems(in controller: QLPreviewController) -> Int {
-        return downloadedURL != nil ? 1 : 0
+        return originalDownloadedURL != nil ? 1 : 0
     }
     
     func previewController(_ controller: QLPreviewController, previewItemAt index: Int) -> QLPreviewItem {
-        return downloadedURL! as QLPreviewItem
+        return originalDownloadedURL! as QLPreviewItem
     }
     
-    // MARK: - QLPreviewControllerDelegate (Cleanup)
     // MARK: - QLPreviewControllerDelegate (Cleanup)
     func previewControllerDidDismiss(_ controller: QLPreviewController) {
         cleanUpSession()
     }
     
     private func cleanUpSession() {
-        // Strict cleanup: Delete the parent session directory of the file
-        // Path structure: .../temp/session_<UUID>/output.mp4
-        if let url = downloadedURL {
+        // Delete the temporary playback file if it exists
+        if let tempURL = temporaryPlaybackURL {
+            try? FileManager.default.removeItem(at: tempURL)
+            self.temporaryPlaybackURL = nil
+        }
+        
+        // Delete the original downloaded file and its session directory
+        if let url = originalDownloadedURL {
             let sessionDir = url.deletingLastPathComponent()
             do {
                 try FileManager.default.removeItem(at: sessionDir)
@@ -89,22 +154,15 @@ class ShareViewController: UIViewController, QLPreviewControllerDataSource, QLPr
             } catch {
                 print("[Share] Cleanup Error: \(error)")
             }
-            self.downloadedURL = nil
+            self.originalDownloadedURL = nil
         }
         
-        // Also trigger extension complete
+        // Close the extension
         extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
     }
     
-    // Clean up
-    // Clean up handled in deinit to prevent premature closure
-    // override func viewDidDisappear(_ animated: Bool) {
-    //    super.viewDidDisappear(animated)
-    // }
-    
-        deinit {
-            // This deinit is called when the ShareViewController is deallocated.
-            NotificationCenter.default.removeObserver(self)
-            // cleanUpSession() - Removing to prevent premature extension closure.
-            // Cleanup happens on QuickLook dismiss or startup GC.
-        }}
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+}
+

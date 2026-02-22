@@ -61,9 +61,13 @@ struct DownloadView: View {
                             TextField("Paste Link Here...", text: $urlInput)
                                 .padding()
                                 .liquidGlass()
-                                .submitLabel(.go)
-                                .onSubmit {
-                                    startDownload()
+                                .if(availableiOS: 15.0) {
+                                    if #available(iOS 15.0, *) {
+                                        $0.submitLabel(.go)
+                                          .onSubmit { startDownload() }
+                                    } else {
+                                        $0
+                                    }
                                 }
                         }
                         
@@ -106,7 +110,11 @@ struct DownloadView: View {
                                 ))
                             }
                         }
-                        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isAudioOnly)
+                        .if(availableiOS: 15.0) {
+                            $0.animation(.spring(response: 0.35, dampingFraction: 0.8), value: isAudioOnly)
+                        } otherwise: {
+                            $0.animation(.spring(response: 0.35, dampingFraction: 0.8))
+                        }
                         
                         // Advanced Options
                         DisclosureGroup(
@@ -163,10 +171,26 @@ struct DownloadView: View {
                             },
                             label: {
                                 DotMatrixText(text: "ADVANCED OPTIONS")
-                                    .foregroundStyle(.secondary)
+                                    .if(availableiOS: 15.0) {
+                                        if #available(iOS 15.0, *) {
+                                            $0.foregroundStyle(.secondary)
+                                        } else {
+                                            $0
+                                        }
+                                    } otherwise: {
+                                        $0.foregroundColor(.secondary)
+                                    }
                             }
                         )
-                        .tint(.primary)
+                        .if(availableiOS: 15.0) {
+                            if #available(iOS 15.0, *) {
+                                $0.tint(.primary)
+                            } else {
+                                $0
+                            }
+                        } otherwise: {
+                            $0.accentColor(.primary)
+                        }
                         .padding(.top, 8)
                     }
                     .padding(.horizontal)
@@ -182,6 +206,15 @@ struct DownloadView: View {
                                     self.showQuickLook = true
                                 }
                             }
+                            .if(availableiOS: 15.0) {
+                                if #available(iOS 15.0, *) {
+                                    $0.animation(.spring(), value: task.status)
+                                } else {
+                                    $0
+                                }
+                            } otherwise: {
+                                $0.animation(.spring())
+                            }
                     }
                     
                     // Action Button
@@ -196,6 +229,15 @@ struct DownloadView: View {
                     .padding(.bottom, 100)
                 }
                 .padding(.top, 10)
+                .if(availableiOS: 15.0) {
+                    if #available(iOS 15.0, *) {
+                        $0.animation(.easeInOut(duration: 0.8), value: isDownloading)
+                    } else {
+                        $0
+                    }
+                } otherwise: {
+                    $0.animation(.easeInOut(duration: 0.8))
+                }
             }
             .navigationTitle("Download")
             .navigationBarTitleDisplayMode(.inline)
@@ -284,7 +326,7 @@ struct DownloadView: View {
                             .padding(.vertical, 8)
                             .frame(maxWidth: .infinity)
                             .background(selection.wrappedValue == item ? Color.primary : Color.secondary.opacity(0.1))
-                            .foregroundColor(selection.wrappedValue == item ? Color(uiColor: .systemBackground) : .primary)
+                            .foregroundColor(selection.wrappedValue == item ? Color(UIColor.systemBackground) : .primary)
                             .cornerRadius(8)
                     }
                 }
@@ -337,33 +379,73 @@ struct DownloadProgressSection: View {
             if SettingsManager.shared.progressVisible {
                 // Main Server Progress
                 ProgressView(value: task.progress)
-                    .tint(DesignSystem.Colors.nothingRed)
+                    .if(availableiOS: 15.0) {
+                        if #available(iOS 15.0, *) {
+                            $0.tint(DesignSystem.Colors.nothingRed)
+                        } else {
+                            $0
+                        }
+                    } otherwise: {
+                        $0.accentColor(DesignSystem.Colors.nothingRed)
+                    }
                     .scaleEffect(x: 1, y: 1.2, anchor: .center)
                 
                 // File Transfer Progress (Secondary Bar)
                 if let fileProgress = task.fileDownloadProgress {
                     VStack(spacing: 4) {
                         ProgressView(value: fileProgress)
-                            .tint(DesignSystem.Colors.nothingRed)
+                            .if(availableiOS: 15.0) {
+                                if #available(iOS 15.0, *) {
+                                    $0.tint(DesignSystem.Colors.nothingRed)
+                                } else {
+                                    $0
+                                }
+                            } otherwise: {
+                                $0.accentColor(DesignSystem.Colors.nothingRed)
+                            }
                             .scaleEffect(x: 1, y: 1.2, anchor: .center)
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                         
                         Text("\(Int(fileProgress * 100))%")
                             .font(.nothingMeta)
-                            .foregroundStyle(.secondary)
+                            .if(availableiOS: 15.0) {
+                                if #available(iOS 15.0, *) {
+                                    $0.foregroundStyle(.secondary)
+                                } else {
+                                    $0
+                                }
+                            } otherwise: {
+                                $0.foregroundColor(.secondary)
+                            }
                     }
                     .padding(.top, 4)
                 } else {
                     // Only show percentage for server task if file transfer hasn't started
                     Text("\(Int(task.progress * 100))%")
                         .font(.nothingMeta)
-                        .foregroundStyle(.secondary)
+                        .if(availableiOS: 15.0) {
+                            if #available(iOS 15.0, *) {
+                                $0.foregroundStyle(.secondary)
+                            } else {
+                                $0
+                            }
+                        } otherwise: {
+                            $0.foregroundColor(.secondary)
+                        }
                 }
             }
         }
         .padding(.horizontal)
         .padding(.bottom, 20)
-        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: task.fileDownloadProgress)
+        .if(availableiOS: 15.0) {
+            if #available(iOS 15.0, *) {
+                $0.animation(.spring(response: 0.4, dampingFraction: 0.7), value: task.fileDownloadProgress)
+            } else {
+                $0
+            }
+        } otherwise: {
+            $0.animation(.spring(response: 0.4, dampingFraction: 0.7))
+        }
         .transition(.move(edge: .bottom).combined(with: .opacity))
         .onReceive(task.$progress) { prog in
             checkHaptics(prog)
