@@ -4,27 +4,22 @@
 ![Node.js](https://img.shields.io/badge/Node.js-16+-green.svg)
 ![Platform](https://img.shields.io/badge/platform-iOS-lightgrey.svg)
 
-A modern iOS video downloader powered by a Node.js backend and `yt-dlp`.
+Fetchy is an iOS video downloader backed by Node.js and `yt-dlp`.
+The iOS app handles job creation, progress reporting, and file retrieval, while the server performs media processing.
 
-Fetchy provides a seamless video downloading experience by offloading
-all heavy processing to a server, keeping the iOS app lightweight, fast,
-and battery-efficient.
+*Supports iOS 15.6+.*
 
-*Support iOS 15.6+*
+[日本語 README](README-jp.md)
 
-[👉 日本語Readmeはこっち](README-jp.md)
+## 📐 Architecture
 
-------------------------------------------------------------------------
-
-## 📐 Architecture Diagram
-
-``` mermaid
+```mermaid
 flowchart LR
 
 User((User))
 App[iOS App - SwiftUI]
 Share[Share Extension]
-Backend[Public Node.js Backend - Railway,etc]
+Backend[Public Node.js Backend - Railway, etc.]
 Queue[Job Processing System]
 YTDLP[yt-dlp Engine]
 Storage[Output Storage]
@@ -43,186 +38,118 @@ Storage --> Backend
 Backend -->|Progress / Download URL| App
 ```
 
-------------------------------------------------------------------------
+## 🧠 Design
 
-## 🧠 Why Fetchy Exists
+Many mobile downloaders perform media processing on the device.
+Fetchy moves CPU-intensive work to the backend instead.
 
-Most mobile downloader apps execute media processing directly on-device.
+This design aims to:
 
-Fetchy experiments with a different design:
-
--   Move CPU-heavy tasks to backend services
--   Improve battery efficiency
--   Keep UI highly responsive
--   Allow backend improvements without forcing app updates
-
-------------------------------------------------------------------------
+- reduce CPU load on the iOS device;
+- reduce battery use during media processing;
+- keep the interface responsive; and
+- allow backend processing changes without requiring an app update.
 
 ## 🌍 Public Backend
 
 Fetchy currently uses a publicly accessible backend hosted on Railway.
+The public deployment is also used to evaluate real-world behavior, workload scaling, and abuse-prevention measures.
 
-This backend is intentionally open to:
-
--   Observe real-world usage behavior
--   Experiment with scaling video processing workloads
--   Evaluate security and abuse prevention strategies
-
-Planned future improvements include:
-
--   Rate limiting
--   Authentication
--   Usage quotas
-
-------------------------------------------------------------------------
+Planned improvements include rate limiting, authentication, and usage quotas.
 
 ## 📦 Installation (IPA)
 
-Fetchy is distributed as an IPA via GitHub Releases.
+Fetchy is distributed as an IPA through [GitHub Releases](https://github.com/nisesimadao/Fetchy/releases).
 
-👉 https://github.com/nisesimadao/Fetchy/releases
+It can be installed with:
 
-You can install Fetchy using:
-
--   AltStore
--   SideStore
--   TrollStore (if supported)
-
-------------------------------------------------------------------------
+- AltStore;
+- SideStore; or
+- TrollStore on supported devices.
 
 ## 🖼️ Screenshots
 
 <img width="195" alt="Shared Extension Download Screen" src="https://github.com/user-attachments/assets/91a0d835-5c03-4bfd-89ca-1e6bf27692b4" />
-<img width="195" alt="Shared Extension Download Progress Screen (can be turned on/off in settings)" src="https://github.com/user-attachments/assets/73d8e366-b294-497f-aeb9-9c8c8ddec4aa" />
+<img width="195" alt="Shared Extension Download Progress Screen" src="https://github.com/user-attachments/assets/73d8e366-b294-497f-aeb9-9c8c8ddec4aa" />
 <img width="195" alt="Download Screen" src="https://github.com/user-attachments/assets/11280d76-10f2-4ca0-955f-2c8a6bdccab4" />
 <img width="195" alt="History Screen" src="https://github.com/user-attachments/assets/a3e662be-aeb6-4668-99e1-edaaf4c78307" />
 
-------------------------------------------------------------------------
-
 ## ✨ Features
 
--   **Server-Side Processing**: The backend handles `yt-dlp` execution,
-    minimizing the iOS device's CPU and battery usage.
--   **Wide Site Compatibility**: Supports downloading from hundreds of
-    video sites thanks to `yt-dlp`.
--   **Real-Time Progress**: The app's UI is updated in real-time by
-    polling the backend for job status.
--   **Rich Download Options**: Customize downloads with options for
-    quality, format, metadata embedding, and more.
--   **Native SwiftUI Interface**: A clean, modern, and responsive UI
-    built entirely with SwiftUI.
--   **Share Extension**: Start downloads directly from other apps (like
-    Safari) via the iOS Share Sheet.
--   **Asynchronous by Design**: The job-based architecture ensures the
-    app remains responsive at all times.
+- **Server-side processing**: the backend runs `yt-dlp` instead of the iOS device.
+- **Broad site support**: supported sites are determined by `yt-dlp`.
+- **Progress reporting**: the app polls the backend for job status and updates the UI.
+- **Download options**: quality, format, metadata embedding, and related options can be configured.
+- **Native SwiftUI interface**: the iOS client is implemented in SwiftUI.
+- **Share Extension**: URLs can be sent to Fetchy from the iOS Share Sheet.
+- **Asynchronous jobs**: server work is represented as jobs so the client does not block while processing continues.
 
-------------------------------------------------------------------------
+## 🏗️ Request Flow
 
-## 🏗️ Architecture
+1. The user provides a video URL in the app or Share Extension.
+2. The client sends a download request to the Node.js backend.
+3. The server creates a job ID and starts `yt-dlp` processing.
+4. The client polls `/api/status/:jobId` for progress.
+5. After processing finishes, the client downloads the resulting file from `/api/download/:jobId`.
 
-Fetchy uses a client-server architecture to separate the user interface
-from the heavy lifting of video processing.
-
-1.  **iOS App (Client)**: The user provides a video URL via the main app
-    or the Share Extension.
-2.  **API Request**: The app sends a "start download" request to the
-    Node.js backend.
-3.  **Node.js API (Server)**: The server creates a unique job ID,
-    immediately starts a `yt-dlp` download process in the background,
-    and returns the job ID to the app.
-4.  **Polling for Status**: The iOS app periodically polls a status
-    endpoint (`/api/status/:jobId`) to get real-time progress.
-5.  **File Download**: Once the server finishes downloading the video,
-    the iOS app downloads the final file from a dedicated endpoint
-    (`/api/download/:jobId`).
-
-```{=html}
-<!-- -->
+```text
++------------------+           +----------------------+           +----------------+
+| iOS App (Client) | --(1)-->  | Node.js API (Server) | --(2)-->  | yt-dlp Process |
+|                  | <-- JobID--|                      |           |                |
+|                  |           |                      |           +----------------+
+|   polls status   | --(3)-->  |  (manages job)       |
+|                  | <--progress|                      |
+|                  |           |                      |
+| downloads file   | --(4)-->  |  (serves file)       |
++------------------+           +----------------------+
 ```
-    +------------------+           +----------------------+           +----------------+
-    | iOS App (Client) | --(1)-->  | Node.js API (Server) | --(2)-->  | yt-dlp Process |
-    |                  | <-- JobID--|                      |           |                |
-    |                  |           |                      |           +----------------+
-    |   polls status   | --(3)-->  |  (manages job)       |
-    |                  | <--progress|                      |
-    |                  |           |                      |
-    | downloads file   | --(4)-->  |  (serves file)       |
-    +------------------+           +----------------------+
-
-------------------------------------------------------------------------
 
 ## 🛠️ Tech Stack
 
--   **Client (iOS)**: SwiftUI
--   **Server (Backend)**: Node.js, Express.js
--   **Core Dependency**: `yt-dlp`
+- **Client**: SwiftUI
+- **Backend**: Node.js / Express.js
+- **Core dependency**: `yt-dlp`
 
-------------------------------------------------------------------------
+## 🚀 Setup
 
-## 🚀 Setup & Installation
+### Backend
 
-To run Fetchy, you need to set up both the backend server and the iOS
-client.
-
-### 1. Backend Server (`fetchy-api`)
-
-``` bash
+```bash
 cd fetchy-api
 npm install
 npm start
 ```
 
-For production use, you can deploy this backend to:
+The backend can run on Railway, Render, Heroku, or another Node.js hosting provider.
 
--   Railway
--   Render
--   Heroku
--   Any Node.js hosting provider
+### iOS App
 
-------------------------------------------------------------------------
+Open the Xcode project:
 
-### 2. iOS App (`Fetchy`)
-
-1.  Open the project in Xcode:
-
-``` bash
+```bash
 open Fetchy.xcodeproj
 ```
 
-2.  Navigate to:
+Set the backend URL in:
 
-```{=html}
-<!-- -->
+```text
+Fetchy/Shared/Managers/APIClient.swift
 ```
-    Fetchy/Shared/Managers/APIClient.swift
 
-3.  Update backend URL:
-
-``` swift
+```swift
 private let baseURL = "https://your-backend-service-url.com"
 ```
 
-4.  Build & Run
+Then build and run the app from Xcode.
 
-------------------------------------------------------------------------
+## 🔐 Usage Notice
 
-## 🔐 Legal Notice
-
-Fetchy is provided as a technical architecture demonstration.
-
-Users are responsible for complying with:
-
--   Platform Terms of Service
--   Copyright laws
--   Local regulations
-
-------------------------------------------------------------------------
+Fetchy is provided as a technical demonstration.
+Users are responsible for complying with the terms of the source platform, applicable copyright law, and local regulations.
 
 ## ❤️ Contributing
 
-Pull Requests and Issues are welcome!
-
-------------------------------------------------------------------------
+Issues and pull requests are welcome.
 
 ## 📄 License
 
